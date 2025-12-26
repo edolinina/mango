@@ -32,8 +32,7 @@ class BaseAgent:
             
             messages = await list_tool.ainvoke({})
             for msg in messages:
-                txt = msg['text']
-                parsed = json.loads(txt)
+                parsed = json.loads(msg['text'])
 
                 match = None
                 for entry in parsed:
@@ -49,7 +48,6 @@ class BaseAgent:
             return None
 
         result = await self.process_directive(directive)
-        print(result)
 
         # send feedback back to MCP
         tools = await self.client.get_tools()

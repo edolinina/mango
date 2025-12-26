@@ -20,7 +20,7 @@ def send_feedback(envelope: dict) -> str:
     MESSAGES.append(msg.model_dump())
 
     payload = AgentOutput(**msg.payload)
-    return f"AgentOutput '{payload.summary}' accepted"
+    return f"AgentOutput '{payload.agent} {payload.status}' accepted"
 
 @mcp.tool()
 def list_messages() -> list:
