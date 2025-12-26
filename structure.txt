@@ -1,0 +1,60 @@
+mango/
+├── README.md
+├── pyproject.toml / requirements.txt
+├── config/
+│   ├── global_objectives.yaml        # CE goals, constraints, HITL levels
+│   ├── agents.yaml                   # enabled agents, types, permissions
+│   ├── mcp.yaml                      # messaging + routing config
+│   └── hitl.yaml                     # approval checkpoints
+│
+├── core/
+│   ├── central_executive.py          # CE logic (LLM + MCDA + RAG)
+│   ├── mcp/
+│   │   ├── protocol.py               # MCP message schema
+│   │   ├── router.py                 # intent & message routing
+│   │   └── audit.py                  # traceability & logs
+│   └── scheduler.py                  # execution & escalation control
+│
+├── agents/
+│   ├── base.py                       # BaseAgent interface
+│   ├── hr_agent/
+│   │   ├── agent.py                  # LLM + ML HR agent
+│   │   └── config.yaml
+│   ├── infra_agent/
+│   │   ├── agent.py                  # RL + ML infra agent
+│   │   └── config.yaml
+│   ├── finance_agent/
+│   │   ├── agent.py                  # ML predictor agent
+│   │   └── config.yaml
+│   └── ops_agent/
+│       ├── agent.py                  # LLM + RAG ops agent
+│       └── config.yaml
+│
+├── rag/
+│   ├── retriever.py                  # vector DB / search
+│   ├── memory_store.py               # episodic + long-term memory
+│   └── loaders/                      # policies, docs, logs
+│
+├── hitl/
+│   ├── approval.py                   # human approval hooks
+│   ├── overrides.py                  # human corrections
+│   └── feedback.py                   # feedback → policy updates
+│
+├── models/
+│   ├── llm.py                        # Ollama / local LLM wrapper
+│   ├── rl/
+│   │   ├── envs.py
+│   │   └── agents.py
+│   └── ml/
+│       ├── predictors.py
+│       └── classifiers.py
+│
+├── evaluation/
+│   ├── scenarios.yaml                # org-level test cases
+│   ├── metrics.py                    # quality, ROI, fairness
+│   └── run_eval.py
+│
+└── scripts/
+    ├── run_mango.py                  # entry point
+    └── simulate_decision.py
+

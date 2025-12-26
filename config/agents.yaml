@@ -1,0 +1,6 @@
+central-executive:
+  instructions:  >
+    Your task: {task}.
+    Convert the result intent into concise directives. Always define clear constraints and kpis for each agent.
+    Use one directive per agent. No explanations.
+    The following agents are at your disposal: {agents}

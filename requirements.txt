@@ -1,0 +1,6 @@
+chromadb==1.4.0
+fastapi==0.127.0
+fastmcp==2.14.1
+opentelemetry-sdk==1.39.1
+langchain_mcp_adapters==0.2.1
+langchain==1.2.0
