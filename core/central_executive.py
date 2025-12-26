@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from uuid import uuid4
@@ -6,13 +5,12 @@ from langchain.agents import create_agent
 
 from utils.llm import load_model
 from core.mcp.protocol import CEOutput, MCPEnvelope
+from agents.base import BaseAgent
 
 
-class CentralExecutive:
+class CentralExecutive(BaseAgent):
     def __init__(self, mcp_client):
-        self.logger = logging.getLogger("mango")
-        self.client = mcp_client
-
+        super().__init__("CentralExecutive", mcp_client)
         llm = load_model()
         self.model = llm.with_structured_output(CEOutput)
 

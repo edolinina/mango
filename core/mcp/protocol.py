@@ -20,7 +20,7 @@ class Directive(BaseModel):
 class CEOutput(BaseModel):
     directives: List[Directive]
 
-class Feedback(BaseModel):
-    decision_id: str
-    approved: bool
-    comments: str | None = None
+class AgentOutput(BaseModel):
+    agent: str
+    status: Literal["completed", "failed"]
+    summary: str
