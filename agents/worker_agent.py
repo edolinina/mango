@@ -6,6 +6,7 @@ from langchain.agents import create_agent
 
 from mcp_server.protocol import AgentOutput, MCPEnvelope
 from agents.worker_network import run_agent_network
+from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
 
@@ -22,14 +23,13 @@ class WorkerAgent:
         self.model = model
 
     async def process_agent_directive(self):
-        tools = await self.client.get_tools()
-        list_tool = next((t for t in tools if getattr(t, "name", "") == "list_messages"), None)
-        if not list_tool:
+        mcp_endpoint = await get_mcp_endpoint(self.client, "list_messages")
+        if not mcp_endpoint:
             logger.info("list_messages tool not available on MCP client")
             return None
         
         directive = None
-        messages = await list_tool.ainvoke({})
+        messages = await mcp_endpoint.ainvoke({})
         for msg in messages:
             parsed = json.loads(msg['text'])
 
@@ -53,10 +53,9 @@ class WorkerAgent:
         result = AgentOutput(agent=self.name, status="completed", summary=summary)
 
         # send feedback back to MCP
-        tools = await self.client.get_tools()
-        send_tool = next((t for t in tools if getattr(t, "name", "") == "send_feedback"), None)
-        if send_tool:
-            await send_tool.ainvoke({
+        mcp_endpoint = await get_mcp_endpoint(self.client, "send_feedback")
+        if mcp_endpoint:
+            await mcp_endpoint.ainvoke({
                 "envelope": {
                     "message_type": "agent_feedback",
                     "sender": self.name,

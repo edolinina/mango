@@ -4,6 +4,7 @@ from uuid import uuid4
 from langchain.agents import create_agent
 
 from mcp_server.protocol import CEOutput, MCPEnvelope
+from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
 
@@ -19,9 +20,7 @@ class CentralExecutive:
 
     async def send_directives(self, intent: CEOutput):
         """Send directives to MCP"""
-        tools = await self.client.get_tools()
-        send_tool = next(t for t in tools if t.name == "send_directive")
-
+        mcp_endpoint = await get_mcp_endpoint(self.client, "send_directive")
         results = []
         for d in intent.directives:
             directive = d.model_dump()
@@ -33,7 +32,7 @@ class CentralExecutive:
                 message_id=str(uuid4()),
                 payload=directive
             )
-            res = await send_tool.ainvoke({"envelope": envelope.model_dump()})
+            res = await mcp_endpoint.ainvoke({"envelope": envelope.model_dump()})
             results.append(res)
 
         return results

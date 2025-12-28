@@ -50,6 +50,10 @@ def get_mcp_client():
         }
     )
 
+async def get_mcp_endpoint(mcp_client, endpoint):
+    tools = await mcp_client.get_tools()
+    return next((t for t in tools if t.name == endpoint), None)
+
 def setup_logger(name: str = "mango", level=logging.INFO):
     logger = logging.getLogger(name)
     logger.setLevel(level)
