@@ -3,16 +3,15 @@ import logging
 from uuid import uuid4
 from langchain.agents import create_agent
 
-from utils.llm import load_model
-from core.mcp.protocol import CEOutput, MCPEnvelope
-from agents.base import BaseAgent
+from mcp_server.protocol import CEOutput, MCPEnvelope
+
+logger = logging.getLogger("mango")
 
 
-class CentralExecutive(BaseAgent):
-    def __init__(self, mcp_client):
-        super().__init__("CentralExecutive", mcp_client)
-        llm = load_model()
-        self.model = llm.with_structured_output(CEOutput)
+class CentralExecutive:
+    def __init__(self, model, mcp_client):
+        self.client = mcp_client
+        self.model = model.with_structured_output(CEOutput)
 
     async def generate_directives(self, intent: str) -> CEOutput:
         """Use LLM ONLY to generate structured directives"""
@@ -26,7 +25,7 @@ class CentralExecutive(BaseAgent):
         results = []
         for d in intent.directives:
             directive = d.model_dump()
-            self.logger.info(f"Sending directive {directive} to MCP")
+            logger.info(f"Sending directive {directive} to MCP")
             envelope = MCPEnvelope(
                 message_type="directive",
                 sender="CentralExecutive",

@@ -1,5 +1,5 @@
 from fastmcp import FastMCP
-from core.mcp.protocol import MCPEnvelope, Directive, AgentOutput
+from mcp_server.protocol import MCPEnvelope, Directive, AgentOutput
 
 mcp = FastMCP("MANGO-MCP")
 

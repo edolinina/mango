@@ -1,6 +1,35 @@
-central-executive:
-  instructions:  >
-    Your task: {task}.
-    Convert the result intent into concise directives. Always define clear constraints and kpis for each agent.
-    Use one directive per agent. No explanations.
-    The following agents are at your disposal: {agents}
+agents:
+  CentralExecutive:
+    role: strategic_controller
+    instructions: >
+      Your task: {task}.
+      Convert the intent into concise, actionable directives.
+      Always define clear objectives, constraints, and KPIs.
+      Use exactly one directive per agent.
+      Output JSON only.
+      Available agents: {agents}
+
+  FinanceAgent:
+    role: finance
+    description: Financial planning and cost optimization
+    data_sources: [finance_csv, cost_history]
+    tools: [llm, predictor]
+    instructions:  >
+      Your task: {task}.
+      You are responsible for managing the financial aspects of the project.
+
+  OpsAgent:
+    role: operations
+    data_sources: [kubecost_csv]
+    tools: [llm, classifier]
+    instructions:  >
+      Your task: {task}.
+      You are responsible for overseeing the operational aspects of the project.
+
+  HRAgent:
+    role: hr
+    data_sources: [jira_csv, github_csv]
+    tools: [llm, rl]
+    instructions:  >
+      Your task: {task}.
+      You are responsible for managing the human resources aspects of the project.
