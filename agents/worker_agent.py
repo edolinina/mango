@@ -1,7 +1,6 @@
 import logging
 import json
 
-from uuid import uuid4
 from langchain.agents import create_agent
 
 from mcp_server.protocol import AgentOutput, MCPEnvelope
@@ -60,7 +59,6 @@ class WorkerAgent:
                     "message_type": "agent_feedback",
                     "sender": self.name,
                     "target": self.manager,
-                    "message_id": str(uuid4()),
                     "payload": result.model_dump(),
                 }
             })

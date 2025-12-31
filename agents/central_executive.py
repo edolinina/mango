@@ -1,6 +1,5 @@
 import logging
 
-from uuid import uuid4
 from langchain.agents import create_agent
 
 from mcp_server.protocol import CEOutput, MCPEnvelope
@@ -29,7 +28,6 @@ class CentralExecutive:
                 message_type="directive",
                 sender="CentralExecutive",
                 target=d.agent,
-                message_id=str(uuid4()),
                 payload=directive
             )
             res = await mcp_endpoint.ainvoke({"envelope": envelope.model_dump()})

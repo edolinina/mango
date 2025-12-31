@@ -11,8 +11,7 @@ agents:
 
   FinanceAgent:
     role: finance
-    description: Financial planning and cost optimization
-    data_sources: [finance_csv, cost_history]
+    data_sources: [finance.csv]
     tools: [llm, predictor]
     instructions:  >
       Your task: {task}.
@@ -20,7 +19,7 @@ agents:
 
   OpsAgent:
     role: operations
-    data_sources: [kubecost_csv]
+    data_sources: [operations.csv, operations_episodes.csv]
     tools: [llm, classifier]
     instructions:  >
       Your task: {task}.
@@ -28,7 +27,7 @@ agents:
 
   HRAgent:
     role: hr
-    data_sources: [jira_csv, github_csv]
+    data_sources: [human_resources.csv]
     tools: [llm, rl]
     instructions:  >
       Your task: {task}.
