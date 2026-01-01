@@ -14,8 +14,7 @@ class MCPEnvelope(BaseModel):
 class Directive(BaseModel):
     agent: str
     objective: str
-    constraints: List[str]
-    kpis: List[str]
+    capabilities: List[str]
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 class CEOutput(BaseModel):

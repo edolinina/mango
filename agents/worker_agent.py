@@ -15,13 +15,11 @@ class WorkerAgent:
         self.name = name
         self.client = mcp_client
         self.manager = manager_name
-
-        self.tools = config.get("tools", [])
-        self.data_sources = config.get("data_sources", [])
-
         self.model = model
+        self.config = config
 
     async def process_agent_directive(self):
+        results = []
         mcp_endpoint = await get_mcp_endpoint(self.client, "list_messages")
         if not mcp_endpoint:
             logger.info("list_messages tool not available on MCP client")
@@ -41,56 +39,34 @@ class WorkerAgent:
             logger.info(f"No directive found for agent {self.name}")
             return None
 
-        input_state = { 
-            "task": directive.get("objective"),
-            "tools": self.tools,
-            "model": self.model
-        }
-        result_state = await run_agent_network(input_state)
-        summary = json.dumps(result_state.get("results"))
+        capabilities = directive.get("capabilities", [])
+        for cap in self.config["capabilities"]:
+            if cap["name"] not in capabilities:
+                logger.info(f"Capability {cap['name']} not assigned to agent {self.name}, skipping")
+                continue
 
-        result = AgentOutput(agent=self.name, status="completed", summary=summary)
+            tools = cap.get("tools", [])
+            input_state = { 
+                "task": directive.get("objective"),
+                "tools": tools,
+                "model": self.model
+            }
+            result_state = await run_agent_network(input_state)
+            summary = json.dumps(result_state.get("results"))
 
-        # send feedback back to MCP
-        mcp_endpoint = await get_mcp_endpoint(self.client, "send_feedback")
-        if mcp_endpoint:
-            await mcp_endpoint.ainvoke({
-                "envelope": {
-                    "message_type": "agent_feedback",
-                    "sender": self.name,
-                    "target": self.manager,
-                    "payload": result.model_dump(),
-                }
-            })
+            result = AgentOutput(agent=self.name, status="completed", summary=summary)
+            results.append(result)
 
-        return result
+            # send feedback back to MCP
+            mcp_endpoint = await get_mcp_endpoint(self.client, "send_feedback")
+            if mcp_endpoint:
+                await mcp_endpoint.ainvoke({
+                    "envelope": {
+                        "message_type": "agent_feedback",
+                        "sender": self.name,
+                        "target": self.manager,
+                        "payload": result.model_dump(),
+                    }
+                })
 
-
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-
-def train_linear_model(df, target):
-    X = df.drop(columns=[target])
-    y = df[target]
-
-    cat_cols = X.select_dtypes(include="object").columns
-    num_cols = X.select_dtypes(exclude="object").columns
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("cat", OneHotEncoder(handle_unknown="ignore"), cat_cols),
-            ("num", "passthrough", num_cols),
-        ]
-    )
-
-    model = Pipeline(
-        steps=[
-            ("prep", preprocessor),
-            ("lr", LinearRegression()),
-        ]
-    )
-
-    model.fit(X, y)
-    return model
+        return results

@@ -23,9 +23,15 @@ class MangoOperator:
         logger.info(f"Initialized MangoOperator with agents: {[a.name for a in self.agents]}")
 
     async def operational_loop(self, task):
-        operation_result = []  
-        ce_directive = self.config["CentralExecutive"]["instructions"].format(task=task, 
-            agents=[a.name for a in self.agents])
+        operation_result = []
+
+        ce_directive = self.config["CentralExecutive"]["instructions"].format(
+            task=task,
+            agents={
+                a.name: [cap["name"] for cap in a.config["capabilities"]]
+                for a in self.agents
+            }
+        )
         
         logger.info(f"Sending directive to CE: {ce_directive}")
         ce_output = await self.ce.generate_directives(ce_directive)

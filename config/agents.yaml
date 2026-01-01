@@ -3,34 +3,162 @@ agents:
     role: strategic_controller
     instructions: >
       Your task: {task}.
-      Convert the intent into concise, actionable directives.
-      Always define clear objectives, constraints, and KPIs.
-      Use exactly one directive per agent.
-      Output JSON only.
-      Available agents: {agents}
+      For each available agent, generate one or more directives
+      aligned with the agent's role and declared capabilities.
+
+      Each directive MUST include only:
+        - agent: target agent name
+        - capabilities: list of agent capabilities that it should use
+        - objective: the goal that this agent should achieve to fulfill the target task togerther with other agents
+
+      Do NOT assign capabilities an agent does not have.
+      Output ONLY valid JSON.
+      
+      Available agents with capabilities:
+      {agents}
+
 
   BusinessAgent:
     role: business_performance
-    data_sources: [business_metrics.csv]
-    tools: [llm, predictor, classifier]
+    capabilities:
+      - name: revenue_analysis
+        tools:
+          - type: predictor
+            data_source: business.csv
+            target: revenue
+            features:
+              - active_customers
+              - product_margin
+              - delivery_risk
+              - month
+          - type: llm
+            data_source: business.csv
+            prompt: |
+              Analyze revenue, operational cost, HR spend, and product margin
+              to identify departments where cost reduction is possible without
+              harming revenue.
+              Data:
+              {data}
+      
+      - name: cost_efficiency_analysis
+        tools:
+          - type: llm
+            data_source: business.csv
+            prompt: |
+              Evaluate cost structure using hr_spend and operational_cost.
+              Identify departments with high cost-to-revenue ratios.
+              Suggest cost optimizations with minimal revenue impact.
+              Data:
+              {data}
+
+      - name: delivery_risk_monitoring
+        tools:
+          - type: classifier
+            target: delivery_risk
+            data_source: business.csv
+            features:
+              - operational_cost
+              - hr_spend
+              - active_customers
+              - product_margin
     instructions: >
       Your task: {task}.
-      You are responsible for product delivery performance, revenue efficiency, and business outcomes.
-      Balance cost reduction with revenue impact, customer value, and delivery timelines.
-
+      You are responsible for business performance, revenue sustainability,
+      and delivery outcomes.
+      Optimize cost structures while protecting revenue,
+      customer value, and delivery reliability.
+  
   ITAgent:
     role: infrastructure
-    data_sources: [it_metrics.csv, it_scaling_episodes.csv]
-    tools: [llm, predictor, rl]
+    capabilities:
+      - name: infrastructure_cost_analysis
+        tools:
+          - type: predictor
+            data_source: it.csv
+            target: infra_cost
+            features:
+              - traffic
+              - capacity
+              - sla_met
+          - type: llm
+            data_source: it.csv
+            prompt: |
+              Analyze infrastructure cost, capacity, traffic, and SLA status.
+              Identify services with over-provisioning or inefficiencies.
+              Suggest safe cost reductions without SLA degradation.
+                Data:
+                {data}
+
+      - name: scaling_policy_optimization
+        tools:
+          - type: learner
+            data_source: it_rl.csv
+            state:
+              - traffic
+              - capacity
+            action:
+              - scale_up
+              - scale_down
+              - hold
+            reward:
+              - infra_cost
+              - sla_met
+
+      - name: sla_risk_monitoring
+        tools:
+          - type: classifier
+            data_source: it.csv
+            target: sla_met
+            features:
+              - traffic
+              - capacity
+              - infra_cost
+
     instructions: >
       Your task: {task}.
-      You are responsible for IT infrastructure efficiency, system reliability, and cost-aware scaling decisions.
-      Focus on reducing infrastructure costs while maintaining SLA and delivery performance.
+      You are responsible for IT infrastructure efficiency,
+      cost-aware scaling, and SLA reliability.
+      Reduce infrastructure costs while maintaining service availability
+      and delivery performance.
 
   HRAgent:
-    role: hr
-    data_sources: [human_resources.csv]
-    tools: [llm, rl]
-    instructions:  >
+    role: human_resources
+    capabilities:
+      - name: performance_distribution_analysis
+        tools:
+          - type: llm
+            data_source: hr.csv
+            prompt: |
+              Analyze employee performance_grade, role_level, and contribution_rate
+              across departments.
+              Identify imbalances, underperforming groups, and overconcentration
+              of senior roles.
+              Data:
+              {data}
+
+      - name: workforce_efficiency_classification
+        tools:
+          - type: classifier
+            target: performance_grade
+            data_source: hr.csv
+            features:
+              - role_level
+              - contribution_rate
+              - delivery_impact
+
+      - name: cost_aware_staffing_recommendations
+        tools:
+          - type: llm
+            data_source: hr.csv
+            prompt: |
+              Based on role_level, delivery_impact, and contribution_rate,
+              suggest staffing optimizations that reduce HR spend
+              without harming delivery outcomes.
+              Data:
+              {data}
+
+    instructions: >
       Your task: {task}.
-      You are responsible for managing the human resources aspects of the project.
+      You are responsible for workforce efficiency, role distribution,
+      and human-resource cost optimization.
+      Improve organizational performance while preserving delivery impact.
