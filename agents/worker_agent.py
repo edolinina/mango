@@ -64,3 +64,33 @@ class WorkerAgent:
             })
 
         return result
+
+
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+
+def train_linear_model(df, target):
+    X = df.drop(columns=[target])
+    y = df[target]
+
+    cat_cols = X.select_dtypes(include="object").columns
+    num_cols = X.select_dtypes(exclude="object").columns
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("cat", OneHotEncoder(handle_unknown="ignore"), cat_cols),
+            ("num", "passthrough", num_cols),
+        ]
+    )
+
+    model = Pipeline(
+        steps=[
+            ("prep", preprocessor),
+            ("lr", LinearRegression()),
+        ]
+    )
+
+    model.fit(X, y)
+    return model

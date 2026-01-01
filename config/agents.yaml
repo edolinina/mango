@@ -9,21 +9,23 @@ agents:
       Output JSON only.
       Available agents: {agents}
 
-  FinanceAgent:
-    role: finance
-    data_sources: [finance.csv]
-    tools: [llm, predictor]
-    instructions:  >
+  BusinessAgent:
+    role: business_performance
+    data_sources: [business_metrics.csv]
+    tools: [llm, predictor, classifier]
+    instructions: >
       Your task: {task}.
-      You are responsible for managing the financial aspects of the project.
+      You are responsible for product delivery performance, revenue efficiency, and business outcomes.
+      Balance cost reduction with revenue impact, customer value, and delivery timelines.
 
-  OpsAgent:
-    role: operations
-    data_sources: [operations.csv, operations_episodes.csv]
-    tools: [llm, classifier]
-    instructions:  >
+  ITAgent:
+    role: infrastructure
+    data_sources: [it_metrics.csv, it_scaling_episodes.csv]
+    tools: [llm, predictor, rl]
+    instructions: >
       Your task: {task}.
-      You are responsible for overseeing the operational aspects of the project.
+      You are responsible for IT infrastructure efficiency, system reliability, and cost-aware scaling decisions.
+      Focus on reducing infrastructure costs while maintaining SLA and delivery performance.
 
   HRAgent:
     role: hr

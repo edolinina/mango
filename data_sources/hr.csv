@@ -1,0 +1,451 @@
+employee,department,role_level,delivery_impact,performance_grade,contribution_rate
+E0,Core,3,5,2,7
+E1,Core,1,1,3,9
+E2,Core,3,5,4,8
+E3,Core,1,1,4,6
+E4,Core,2,4,2,9
+E5,Core,2,4,3,8
+E6,Core,2,4,3,4
+E7,Core,2,4,4,3
+E8,Core,3,5,2,7
+E9,Core,3,5,4,5
+E10,Core,4,7,3,9
+E11,Core,3,5,4,4
+E12,Core,2,4,3,3
+E13,Core,1,1,4,7
+E14,Core,3,5,3,9
+E15,Core,1,1,4,5
+E16,Core,2,4,4,4
+E17,Core,1,1,4,6
+E18,Core,1,1,3,7
+E19,Core,2,4,2,8
+E20,Core,3,5,2,5
+E21,Core,3,5,3,8
+E22,Core,2,4,4,5
+E23,Core,2,4,3,3
+E24,Core,1,1,4,3
+E25,Core,3,5,4,7
+E26,Core,3,5,2,8
+E27,Core,2,4,3,6
+E28,Core,1,1,2,3
+E29,Core,2,4,3,6
+E30,Core,2,4,2,8
+E31,Core,2,4,3,6
+E32,Core,2,4,4,5
+E33,Core,1,1,3,6
+E34,Core,1,1,2,5
+E35,Core,3,5,2,4
+E36,Core,1,1,4,4
+E37,Core,1,1,3,7
+E38,Core,2,4,3,8
+E39,Core,2,4,3,5
+E40,Core,3,5,2,4
+E41,Core,1,1,2,3
+E42,Core,3,5,4,6
+E43,Core,1,1,4,6
+E44,Core,1,1,3,7
+E45,Core,2,4,2,5
+E46,Core,1,1,4,7
+E47,Core,2,4,4,3
+E48,Core,1,1,3,9
+E49,Core,4,7,3,7
+E50,Core,1,1,4,9
+E51,Core,3,5,2,8
+E52,Core,2,4,4,4
+E53,Core,1,1,3,9
+E54,Core,2,4,4,4
+E55,Core,1,1,4,7
+E56,Core,1,1,3,8
+E57,Core,3,5,3,8
+E58,Core,2,4,2,7
+E59,Core,2,4,2,7
+E60,Core,1,1,4,5
+E61,Core,1,1,2,6
+E62,Core,1,1,3,4
+E63,Core,1,1,2,7
+E64,Core,1,1,2,9
+E65,Core,2,4,3,5
+E66,Core,2,4,2,3
+E67,Core,4,7,3,6
+E68,Core,3,5,2,3
+E69,Core,2,4,4,6
+E70,Core,4,7,2,7
+E71,Core,2,4,4,4
+E72,Core,1,1,3,6
+E73,Core,2,4,2,3
+E74,Core,3,5,2,9
+E75,Core,1,1,2,6
+E76,Core,1,1,3,7
+E77,Core,1,1,2,7
+E78,Core,3,5,4,8
+E79,Core,1,1,3,9
+E80,Core,1,1,2,3
+E81,Core,2,4,3,5
+E82,Core,3,5,3,8
+E83,Core,1,1,2,9
+E84,Core,1,1,3,6
+E85,Core,1,1,4,9
+E86,Core,1,1,3,3
+E87,Core,2,4,4,9
+E88,Core,3,5,2,8
+E89,Core,3,5,2,9
+E90,Core,2,4,3,5
+E91,Core,3,5,3,7
+E92,Core,2,4,4,3
+E93,Core,3,5,3,4
+E94,Core,4,7,4,4
+E95,Core,1,1,2,8
+E96,Core,1,1,4,4
+E97,Core,2,4,4,9
+E98,Core,1,1,2,5
+E99,Core,3,5,2,9
+E100,Core,2,4,3,4
+E101,Core,1,1,2,4
+E102,Core,1,1,2,7
+E103,Core,1,1,2,6
+E104,Core,2,4,4,7
+E105,Core,1,1,4,8
+E106,Core,3,5,2,8
+E107,Core,1,1,3,3
+E108,Core,4,7,2,5
+E109,Core,1,1,2,6
+E110,Core,2,4,2,9
+E111,Core,1,1,4,9
+E112,Core,1,1,3,6
+E113,Core,2,4,4,3
+E114,Core,1,1,4,5
+E115,Core,4,7,2,7
+E116,Core,4,7,4,8
+E117,Core,2,4,3,8
+E118,Core,1,1,3,3
+E119,Core,3,5,2,8
+E120,Core,1,1,3,6
+E121,Core,2,4,4,9
+E122,Core,2,4,2,5
+E123,Core,2,4,4,5
+E124,Core,2,4,4,9
+E125,Core,2,4,3,4
+E126,Core,1,1,4,8
+E127,Core,3,5,4,3
+E128,Core,1,1,3,7
+E129,Core,1,1,2,8
+E130,Core,1,1,4,4
+E131,Core,4,7,3,4
+E132,Core,1,1,3,4
+E133,Core,1,1,3,3
+E134,Core,1,1,2,4
+E135,Core,1,1,3,7
+E136,Core,2,4,4,5
+E137,Core,1,1,4,6
+E138,Core,3,5,4,8
+E139,Core,1,1,3,4
+E140,Core,1,1,2,4
+E141,Core,2,4,4,5
+E142,Core,1,1,2,5
+E143,Core,2,4,4,3
+E144,Core,3,5,2,3
+E145,Core,4,7,4,3
+E146,Core,3,5,4,9
+E147,Core,4,7,2,8
+E148,Core,3,5,3,7
+E149,Core,3,5,4,3
+E150,SaaS,3,4,4,6
+E151,SaaS,2,3,4,7
+E152,SaaS,1,2,2,3
+E153,SaaS,2,3,2,5
+E154,SaaS,1,2,3,5
+E155,SaaS,2,3,4,5
+E156,SaaS,2,3,2,7
+E157,SaaS,1,2,4,9
+E158,SaaS,4,8,4,6
+E159,SaaS,1,2,3,6
+E160,SaaS,3,4,3,7
+E161,SaaS,3,4,3,6
+E162,SaaS,2,3,2,5
+E163,SaaS,3,4,2,4
+E164,SaaS,2,3,3,9
+E165,SaaS,1,2,4,7
+E166,SaaS,1,2,3,8
+E167,SaaS,1,2,3,9
+E168,SaaS,1,2,4,9
+E169,SaaS,3,4,3,7
+E170,SaaS,3,4,4,8
+E171,SaaS,4,8,2,4
+E172,SaaS,2,3,2,3
+E173,SaaS,2,3,2,4
+E174,SaaS,2,3,2,7
+E175,SaaS,2,3,4,6
+E176,SaaS,3,4,4,8
+E177,SaaS,2,3,2,7
+E178,SaaS,4,8,4,3
+E179,SaaS,1,2,4,3
+E180,SaaS,2,3,4,5
+E181,SaaS,3,4,2,7
+E182,SaaS,1,2,4,9
+E183,SaaS,3,4,3,4
+E184,SaaS,2,3,3,5
+E185,SaaS,1,2,4,4
+E186,SaaS,4,8,3,6
+E187,SaaS,2,3,2,8
+E188,SaaS,2,3,4,9
+E189,SaaS,3,4,3,6
+E190,SaaS,2,3,3,9
+E191,SaaS,3,4,4,9
+E192,SaaS,1,2,2,8
+E193,SaaS,2,3,2,3
+E194,SaaS,2,3,2,7
+E195,SaaS,1,2,2,6
+E196,SaaS,3,4,3,5
+E197,SaaS,2,3,2,6
+E198,SaaS,1,2,3,9
+E199,SaaS,3,4,3,3
+E200,SaaS,4,8,2,9
+E201,SaaS,1,2,4,8
+E202,SaaS,1,2,3,9
+E203,SaaS,2,3,2,7
+E204,SaaS,1,2,4,9
+E205,SaaS,1,2,2,4
+E206,SaaS,1,2,4,8
+E207,SaaS,1,2,2,9
+E208,SaaS,2,3,4,3
+E209,SaaS,1,2,2,3
+E210,SaaS,2,3,4,8
+E211,SaaS,1,2,2,8
+E212,SaaS,1,2,4,8
+E213,SaaS,4,8,2,8
+E214,SaaS,2,3,4,8
+E215,SaaS,1,2,3,4
+E216,SaaS,1,2,4,6
+E217,SaaS,3,4,3,7
+E218,SaaS,3,4,3,4
+E219,SaaS,3,4,2,4
+E220,SaaS,1,2,2,7
+E221,SaaS,4,8,4,7
+E222,SaaS,1,2,2,7
+E223,SaaS,1,2,2,9
+E224,SaaS,3,4,3,4
+E225,SaaS,1,2,4,4
+E226,SaaS,4,8,3,6
+E227,SaaS,3,4,2,7
+E228,SaaS,2,3,3,4
+E229,SaaS,4,8,3,5
+E230,SaaS,2,3,3,7
+E231,SaaS,2,3,3,9
+E232,SaaS,1,2,3,6
+E233,SaaS,2,3,4,6
+E234,SaaS,1,2,4,3
+E235,SaaS,1,2,2,5
+E236,SaaS,2,3,4,7
+E237,SaaS,2,3,4,5
+E238,SaaS,2,3,4,4
+E239,SaaS,2,3,3,5
+E240,SaaS,1,2,2,5
+E241,SaaS,2,3,2,4
+E242,SaaS,2,3,3,6
+E243,SaaS,3,4,3,7
+E244,SaaS,2,3,3,5
+E245,SaaS,3,4,3,6
+E246,SaaS,2,3,3,7
+E247,SaaS,2,3,4,6
+E248,SaaS,3,4,3,9
+E249,SaaS,4,8,4,6
+E250,SaaS,2,3,2,8
+E251,SaaS,1,2,3,8
+E252,SaaS,2,3,2,3
+E253,SaaS,1,2,4,8
+E254,SaaS,1,2,2,4
+E255,SaaS,1,2,3,4
+E256,SaaS,1,2,2,8
+E257,SaaS,1,2,3,8
+E258,SaaS,3,4,3,5
+E259,SaaS,1,2,2,7
+E260,SaaS,1,2,3,5
+E261,SaaS,4,8,2,9
+E262,SaaS,3,4,3,5
+E263,SaaS,2,3,2,7
+E264,SaaS,2,3,4,7
+E265,SaaS,1,2,4,4
+E266,SaaS,2,3,3,4
+E267,SaaS,1,2,3,8
+E268,SaaS,4,8,4,6
+E269,SaaS,3,4,4,9
+E270,SaaS,1,2,3,6
+E271,SaaS,2,3,2,3
+E272,SaaS,3,4,2,6
+E273,SaaS,2,3,4,4
+E274,SaaS,1,2,2,9
+E275,SaaS,1,2,3,4
+E276,SaaS,1,2,2,6
+E277,SaaS,2,3,4,6
+E278,SaaS,1,2,2,4
+E279,SaaS,3,4,4,7
+E280,SaaS,2,3,3,7
+E281,SaaS,3,4,3,3
+E282,SaaS,2,3,4,6
+E283,SaaS,1,2,4,8
+E284,SaaS,2,3,3,8
+E285,SaaS,3,4,3,6
+E286,SaaS,4,8,2,7
+E287,SaaS,3,4,3,5
+E288,SaaS,2,3,4,6
+E289,SaaS,1,2,2,5
+E290,SaaS,4,8,3,7
+E291,SaaS,1,2,2,5
+E292,SaaS,1,2,2,3
+E293,SaaS,4,8,4,6
+E294,SaaS,1,2,2,7
+E295,SaaS,1,2,3,4
+E296,SaaS,3,4,3,7
+E297,SaaS,4,8,4,7
+E298,SaaS,2,3,4,8
+E299,SaaS,4,8,3,8
+E300,AI Products,3,5,2,3
+E301,AI Products,3,5,4,6
+E302,AI Products,2,4,4,7
+E303,AI Products,4,9,2,9
+E304,AI Products,1,1,4,8
+E305,AI Products,3,5,3,5
+E306,AI Products,1,1,2,3
+E307,AI Products,3,5,4,6
+E308,AI Products,4,9,4,6
+E309,AI Products,4,9,2,5
+E310,AI Products,3,5,3,3
+E311,AI Products,2,4,3,8
+E312,AI Products,4,9,3,8
+E313,AI Products,1,1,2,5
+E314,AI Products,1,1,3,3
+E315,AI Products,2,4,4,7
+E316,AI Products,3,5,2,9
+E317,AI Products,3,5,3,8
+E318,AI Products,1,1,4,4
+E319,AI Products,2,4,2,9
+E320,AI Products,1,1,4,6
+E321,AI Products,2,4,3,3
+E322,AI Products,2,4,4,9
+E323,AI Products,2,4,2,4
+E324,AI Products,3,5,3,5
+E325,AI Products,3,5,4,5
+E326,AI Products,2,4,3,5
+E327,AI Products,1,1,3,9
+E328,AI Products,1,1,4,3
+E329,AI Products,1,1,3,8
+E330,AI Products,3,5,3,9
+E331,AI Products,1,1,4,5
+E332,AI Products,1,1,2,7
+E333,AI Products,4,9,4,7
+E334,AI Products,2,4,2,5
+E335,AI Products,4,9,2,6
+E336,AI Products,1,1,2,5
+E337,AI Products,1,1,3,4
+E338,AI Products,1,1,2,6
+E339,AI Products,2,4,4,5
+E340,AI Products,2,4,4,9
+E341,AI Products,3,5,3,6
+E342,AI Products,1,1,3,9
+E343,AI Products,1,1,3,5
+E344,AI Products,4,9,2,6
+E345,AI Products,3,5,2,7
+E346,AI Products,2,4,2,5
+E347,AI Products,1,1,2,5
+E348,AI Products,1,1,3,9
+E349,AI Products,1,1,2,6
+E350,AI Products,3,5,3,8
+E351,AI Products,2,4,4,6
+E352,AI Products,4,9,3,7
+E353,AI Products,3,5,4,9
+E354,AI Products,3,5,3,4
+E355,AI Products,2,4,2,3
+E356,AI Products,2,4,2,9
+E357,AI Products,2,4,4,6
+E358,AI Products,1,1,4,9
+E359,AI Products,1,1,2,3
+E360,AI Products,1,1,3,3
+E361,AI Products,2,4,2,6
+E362,AI Products,1,1,2,3
+E363,AI Products,1,1,3,5
+E364,AI Products,1,1,4,7
+E365,AI Products,1,1,4,5
+E366,AI Products,2,4,2,5
+E367,AI Products,1,1,2,3
+E368,AI Products,3,5,2,3
+E369,AI Products,2,4,2,6
+E370,AI Products,1,1,3,6
+E371,AI Products,3,5,3,8
+E372,AI Products,1,1,2,5
+E373,AI Products,1,1,4,6
+E374,AI Products,2,4,3,4
+E375,AI Products,1,1,2,9
+E376,AI Products,1,1,3,6
+E377,AI Products,3,5,2,4
+E378,AI Products,1,1,2,3
+E379,AI Products,4,9,2,3
+E380,AI Products,1,1,4,3
+E381,AI Products,1,1,4,7
+E382,AI Products,1,1,2,6
+E383,AI Products,2,4,4,8
+E384,AI Products,1,1,2,8
+E385,AI Products,2,4,3,4
+E386,AI Products,3,5,4,8
+E387,AI Products,1,1,2,9
+E388,AI Products,2,4,4,7
+E389,AI Products,4,9,2,5
+E390,AI Products,3,5,2,5
+E391,AI Products,3,5,2,7
+E392,AI Products,1,1,3,5
+E393,AI Products,1,1,4,3
+E394,AI Products,1,1,4,5
+E395,AI Products,1,1,4,4
+E396,AI Products,3,5,4,7
+E397,AI Products,3,5,4,5
+E398,AI Products,3,5,2,7
+E399,AI Products,1,1,4,4
+E400,AI Products,2,4,2,4
+E401,AI Products,2,4,2,9
+E402,AI Products,1,1,4,3
+E403,AI Products,4,9,3,7
+E404,AI Products,1,1,3,9
+E405,AI Products,3,5,3,6
+E406,AI Products,2,4,2,4
+E407,AI Products,1,1,3,7
+E408,AI Products,1,1,3,7
+E409,AI Products,3,5,2,3
+E410,AI Products,2,4,2,4
+E411,AI Products,3,5,4,4
+E412,AI Products,2,4,2,6
+E413,AI Products,2,4,4,7
+E414,AI Products,3,5,4,6
+E415,AI Products,3,5,4,9
+E416,AI Products,2,4,4,6
+E417,AI Products,1,1,2,8
+E418,AI Products,2,4,3,5
+E419,AI Products,1,1,4,9
+E420,AI Products,2,4,2,7
+E421,AI Products,1,1,3,9
+E422,AI Products,1,1,4,4
+E423,AI Products,3,5,4,9
+E424,AI Products,1,1,3,6
+E425,AI Products,3,5,3,9
+E426,AI Products,2,4,3,6
+E427,AI Products,3,5,3,8
+E428,AI Products,3,5,4,6
+E429,AI Products,1,1,4,9
+E430,AI Products,3,5,4,8
+E431,AI Products,1,1,2,4
+E432,AI Products,3,5,3,3
+E433,AI Products,4,9,4,5
+E434,AI Products,3,5,4,9
+E435,AI Products,2,4,3,5
+E436,AI Products,2,4,3,7
+E437,AI Products,2,4,2,7
+E438,AI Products,4,9,3,6
+E439,AI Products,1,1,3,5
+E440,AI Products,2,4,4,3
+E441,AI Products,1,1,2,7
+E442,AI Products,1,1,2,9
+E443,AI Products,1,1,2,3
+E444,AI Products,3,5,3,9
+E445,AI Products,1,1,3,4
+E446,AI Products,1,1,3,6
+E447,AI Products,2,4,3,4
+E448,AI Products,1,1,2,6
+E449,AI Products,4,9,2,7
