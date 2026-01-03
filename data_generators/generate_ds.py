@@ -40,7 +40,7 @@ def gen_business(seed=None, months=MONTHS):
 
 
 # -------------------- IT --------------------
-def gen_it(seed=None, days: int = int(MONTHS * 30 / 2)):
+def gen_it(seed=None, days: int = int(MONTHS * 30 / 4)):
     rng = np.random.default_rng(seed)
     rows = []
     for svc in SERVICES:

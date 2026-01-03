@@ -41,6 +41,14 @@ def validator_training_node(state):
     pass_condition = validator["pass_condition"]
 
     df = pd.read_csv(f"{DATA_SOURCES_DIR}{data_source}")
+    df.columns = df.columns.str.strip()
+
+    missing = set(features + [target]) - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Schema mismatch in {data_source}. "
+            f"Missing: {missing}, Available: {df.columns.tolist()}"
+        )
 
     X = df[features]
     y = df[target]

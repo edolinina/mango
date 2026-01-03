@@ -36,6 +36,7 @@ class CentralExecutive:
                 for a in self.agents
             }
         )
+        logger.debug(f"Directive details: {directive}")
         return await self.model.ainvoke(directive)
 
     async def send_directives(self, intent: CEOutput):

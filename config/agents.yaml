@@ -4,7 +4,7 @@ reasoning:
       Recommendation should be easy to understand and implement and strongly
       tied to the data provided.
       In addition to your recommendations, generate a small simulated dataset
-      (5 rows) that reflects the expected outcomes of your proposal based on the columns in the data.
+      (10 rows) that reflects the expected outcomes of your proposal based on the columns in the data.
       Return the output as VALID JSON with the following schema:
       {
         "recommendation": "...",
@@ -64,19 +64,19 @@ agents:
       - name: cost_optimization
         avatar: 💰🖥️
         validator: infra_cost
-      - name: sla_risk
-        avatar: 📊⚠️
-        validator: sla_risk
+      - name: sla_risk_assessment
+        avatar: 📊✅
+        validator: sla_met
 
     validators:
       - name: infra_cost
         target: infra_cost
         features: [traffic, capacity, sla_met]
         pass_condition: "<MEAN"
-      - name: sla_risk
+      - name: sla_met
         target: sla_met
         features: [traffic, capacity, infra_cost]
-        pass_condition: "=1"
+        pass_condition: "==1"
 
   HRAgent:
     role: human_resources
