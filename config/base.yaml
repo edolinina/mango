@@ -2,3 +2,4 @@ mcp:
   schema: http 
   host: localhost
   port: 8000
+  

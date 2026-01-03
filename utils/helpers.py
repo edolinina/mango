@@ -14,6 +14,13 @@ OLLAMA_MODEL_SEED = 42 # for repetitive responses
 OLLAMA_MODEL_GPUS = 1
 OLLAMA_MODEL_THREADS = 20
 
+class color:
+    BOLD = '\033[1m'
+    END = '\033[0m'
+
+def bold_str(text: str):
+    return f"{color.BOLD}{text}{color.END}"
+
 def load_model() -> ChatOllama:
     return ChatOllama(
         base_url=OLLAMA_BASE_URL,
@@ -45,7 +52,7 @@ def get_mcp_client():
         {
             "mango": {
                 "transport": mcp_config["schema"],
-                "url": f"{mcp_config["schema"]}://{mcp_config["host"]}:{mcp_config["port"]}/mcp",
+                "url": f"{mcp_config['schema']}://{mcp_config['host']}:{mcp_config['port']}/mcp",
             }
         }
     )

@@ -1,10 +1,11 @@
+import json
 import asyncio
 
 from langchain_core.messages import AIMessage
 
 from agents.central_executive import CentralExecutive
 from agents.worker_agent import WorkerAgent
-from utils.helpers import load_config, get_mcp_client, setup_logger, load_model
+from utils.helpers import *
 
 TASK = "Reduce operational costs by 10% without impacting delivery timelines"
 
@@ -15,34 +16,45 @@ class MangoOperator:
     def __init__(self):
         self.mcp_client = get_mcp_client()
         self.config = load_config("agents.yaml")["agents"]
+        self.llm_prompt = load_config("agents.yaml")["reasoning"]["prompt"]
         self.model = load_model()
-
-        self.ce = CentralExecutive(self.model, self.mcp_client)
+        
         self.agents = [WorkerAgent(a, self.config[a], self.model, self.mcp_client) for a in self.config.keys() \
             if a != "CentralExecutive"]
-        logger.info(f"Initialized MangoOperator with agents: {[a.name for a in self.agents]}")
+        
+        self.ce = CentralExecutive(self.model, self.mcp_client, 
+            self.config["CentralExecutive"], self.agents)
+        agents_list = ", ".join([a.name for a in self.agents])
+        logger.info(f"Initialized 🥭 MangoOperator with agents: {agents_list}")
 
     async def operational_loop(self, task):
         operation_result = []
-
-        ce_directive = self.config["CentralExecutive"]["instructions"].format(
-            task=task,
-            agents={
-                a.name: [cap["name"] for cap in a.config["capabilities"]]
-                for a in self.agents
-            }
-        )
-        
-        logger.info(f"Sending directive to CE: {ce_directive}")
-        ce_output = await self.ce.generate_directives(ce_directive)
+        ce_output = await self.ce.generate_directives(task)
+        logger.info(f"Directive for {self.ce.name}: {task}")
+        logger.debug(f"Directive details: {ce_directive}")
         result = await self.ce.send_directives(ce_output)
 
-        logger.info(f"Waiting for agents to perform directives: {ce_output}")
+        logger.info(f"Waiting for agents to perform directives...")
         # Agents will read MCP server messages and pick directives
         for agent in self.agents:
-            agent_response = await agent.process_agent_directive()
-            logger.info(f"Operational results for agent {agent.name}: {agent_response}")
-            operation_result.append(agent_response)
+            agent.config["instructions"] = self.llm_prompt
+            agent_reports = await agent.process_agent_directive()
+            if not agent_reports:
+                logger.info(f"Agent {agent.name} returned no reports.")
+                return None
+
+            logger.info(f"Operational results for agent {agent.name}:")
+            for report in agent_reports:
+                results = json.loads(report.results)
+                logger.info(
+                    f"{bold_str("Capability applied")}: {report.capability}\n"
+                    f"{bold_str("Recommendation")}: {results["recommendation"]}\n"
+                    f"{bold_str("Explanation")}: {results["explanation"]}\n"
+                    f"{bold_str("Validation")}: {report.validation}\n"
+                )
+                logger.info("=="*50)
+
+            operation_result.append(agent_reports)
 
         return operation_result
 

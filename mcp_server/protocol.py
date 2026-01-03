@@ -13,14 +13,11 @@ class MCPEnvelope(BaseModel):
 
 class Directive(BaseModel):
     agent: str
-    objective: str
-    capabilities: List[str]
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-
-class CEOutput(BaseModel):
-    directives: List[Directive]
+    task: str
+    capability: str
 
 class AgentOutput(BaseModel):
     agent: str
-    status: Literal["completed", "failed"]
-    summary: str
+    capability: str
+    results: str
+    validation: str

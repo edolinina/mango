@@ -9,64 +9,95 @@ from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
 
+DATA_SOURCES_DIR = "data_sources/"
+
 
 class WorkerAgent:
     def __init__(self, name, config, model, mcp_client, manager_name="CentralExecutive"):
-        self.name = name
         self.client = mcp_client
         self.manager = manager_name
         self.model = model
         self.config = config
+        self.avatar = config.get("avatar", "")
+        self.name = f"{name} {self.avatar}"
+        self.data_source = self.config.get("data_source")
+        with open(f"{DATA_SOURCES_DIR}{self.data_source}", 'r') as f:
+            self.data_headers = next(f).strip()
 
     async def process_agent_directive(self):
-        results = []
+        response = []
         mcp_endpoint = await get_mcp_endpoint(self.client, "list_messages")
         if not mcp_endpoint:
             logger.info("list_messages tool not available on MCP client")
             return None
         
-        directive = None
+        directives = {}
         messages = await mcp_endpoint.ainvoke({})
         for msg in messages:
             parsed = json.loads(msg['text'])
 
             for entry in parsed:
                 if entry.get('message_type') == 'directive' and entry.get('target') == self.name:
-                    directive = entry.get('payload')
-                    break
+                    directives[entry.get('message_id')] = entry.get('payload')
 
-        if not directive:
-            logger.info(f"No directive found for agent {self.name}")
+        if not directives:
+            logger.info(f"No directives found for agent {self.name}")
             return None
 
-        capabilities = directive.get("capabilities", [])
-        for cap in self.config["capabilities"]:
-            if cap["name"] not in capabilities:
-                logger.info(f"Capability {cap['name']} not assigned to agent {self.name}, skipping")
-                continue
+        for _id, directive in directives.items():
+            capability = directive.get("capability", "")
+            if capability not in [cap["name"] for cap in self.config["capabilities"]]:
+                logger.info(f"Capability {capability} not found in agent {self.name}")
+                return None
 
-            tools = cap.get("tools", [])
-            input_state = { 
-                "task": directive.get("objective"),
-                "tools": tools,
-                "model": self.model
-            }
-            result_state = await run_agent_network(input_state)
-            summary = json.dumps(result_state.get("results"))
+            for cap in self.config["capabilities"]:
+                if cap["name"] != capability:
+                    continue
 
-            result = AgentOutput(agent=self.name, status="completed", summary=summary)
-            results.append(result)
+                task = directive.get("task")
+                validator = cap.get("validator")
+                constraints = "\n".join([f"{v["target"]} {v["pass_condition"]}" \
+                    for v in self.config.get("validators", [])])
 
-            # send feedback back to MCP
-            mcp_endpoint = await get_mcp_endpoint(self.client, "send_feedback")
-            if mcp_endpoint:
-                await mcp_endpoint.ainvoke({
-                    "envelope": {
-                        "message_type": "agent_feedback",
-                        "sender": self.name,
-                        "target": self.manager,
-                        "payload": result.model_dump(),
-                    }
-                })
+                logger.info(f"Agent {self.name} found directive for {capability}: {task}")
+                input_state = { 
+                    "prompt": self.config["instructions"],
+                    "task": task,
+                    "model": self.model,
+                    "data_source": self.data_source,
+                    "constraints": constraints,
+                }
 
-        return results
+                if validator:
+                    input_state["validator"] = [v for v in self.config["validators"] if v["name"] == validator][0]
+                
+                result_state = await run_agent_network(input_state)
+                results = json.dumps(result_state.get("results"))
+                validation = json.dumps(result_state.get("validation"))
+                validation = "✅ success" if "0 failed" in validation else f"❌ fail ({validation})"
+
+                result = AgentOutput(
+                    agent=self.name, 
+                    capability=f"{cap["name"]} {cap["avatar"]}", 
+                    validation=validation, 
+                    results=results
+                )
+                response.append(result)
+
+                # send feedback back to MCP
+                mcp_endpoint = await get_mcp_endpoint(self.client, "send_feedback")
+                if mcp_endpoint:
+                    await mcp_endpoint.ainvoke({
+                        "envelope": {
+                            "message_type": "agent_feedback",
+                            "sender": self.name,
+                            "target": self.manager,
+                            "payload": result.model_dump(),
+                        }
+                    })
+
+                # remove directive from list
+                mcp_endpoint = await get_mcp_endpoint(self.client, "remove_directive")
+                await mcp_endpoint.ainvoke({"id": _id})
+
+        return response
