@@ -3,3 +3,13 @@ mcp:
   host: localhost
   port: 8000
   
+ollama:
+  base_url: http://192.168.1.120:11434
+  llm-model:
+    name: gpt-oss:20b
+    temperature: 0.2
+    seed: 42
+    gpus: 1 
+    threads: 20
+  embedding-model:
+    name: nomic-embed-text:v1.5

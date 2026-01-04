@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage
 from agents.central_executive import CentralExecutive
 from agents.worker_agent import WorkerAgent
 from utils.helpers import *
+from utils.knowledge import get_knowledge_retriever
 
 TASK = "Reduce operational costs by 10% without impacting delivery timelines"
 
@@ -18,14 +19,15 @@ class MangoOperator:
         self.mcp_client = get_mcp_client()
         config = load_config("agents.yaml")
         self.config = config["agents"]
-        self.llm_prompt = config["reasoning"]["prompt"]
+        self.llm_prompt = config["common"]["reasoning"]["prompt"]
         self.model = load_model()
+        self.knowledge_retriever = get_knowledge_retriever()
         
-        self.agents = [WorkerAgent(a, self.config[a], self.model, self.mcp_client) for a in self.config.keys() \
-            if a != "CentralExecutive"]
+        self.agents = [WorkerAgent(a, self.model, self.mcp_client, self.knowledge_retriever) \
+            for a in self.config if a["name"] != "CentralExecutive"]
         
-        self.ce = CentralExecutive(self.model, self.mcp_client, 
-            self.config["CentralExecutive"], self.agents)
+        ce_config = [a for a in self.config if a["name"] == "CentralExecutive"][0]
+        self.ce = CentralExecutive(self.model, self.mcp_client, ce_config, self.agents)
         
         agents_list = ", ".join([a.name for a in self.agents])
         logger.info(f"Initialized 🥭 MangoOperator with agents: {agents_list}")

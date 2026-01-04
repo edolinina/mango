@@ -13,15 +13,13 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
 
-DATA_SOURCES_DIR = "data_sources/"
-
-
 class AgentState(TypedDict):
     prompt: str
     task: str
     constraints: str
     validator: dict
     model: Any
+    context: str
     data_source: str
     results: dict
     validation: str
@@ -40,7 +38,7 @@ def validator_training_node(state):
     features = validator["features"]
     pass_condition = validator["pass_condition"]
 
-    df = pd.read_csv(f"{DATA_SOURCES_DIR}{data_source}")
+    df = pd.read_csv(data_source)
     df.columns = df.columns.str.strip()
 
     missing = set(features + [target]) - set(df.columns)
@@ -85,7 +83,7 @@ async def llm_node(state):
     model = state["model"].with_structured_output(Recommendation) 
     data_source = state["data_source"]
     if data_source:
-        with open(f"{DATA_SOURCES_DIR}{data_source}", 'r') as f:
+        with open(data_source, 'r') as f:
             data = f.read()
 
     validation_features = state.get("validator", {}).get("features", [])
@@ -95,6 +93,7 @@ async def llm_node(state):
         f"Constraints: {state['constraints']}\n"
         f"Features for validation_samples: {validation_features}\n"
         f"Data: {data}.\n"
+        f"Context: {state["context"]}"
     )
 
     results = {"results": answer}

@@ -1,21 +1,22 @@
-reasoning:
-  prompt: >
-      Use the provided data to propose a recommended solution.
-      Recommendation should be easy to understand and implement and strongly
-      tied to the data provided.
-      In addition to your recommendations, generate a small simulated dataset
-      (10 rows) that reflects the expected outcomes of your proposal based on the columns in the data.
-      Return the output as VALID JSON with the following schema:
-      {
-        "recommendation": "...",
-        "explanation": "...",
-        "validation_samples": [
-          { "<feature_1>": value, "<feature_2>": value, ... }
-        ]
-      }
+common:
+  reasoning:
+    prompt: >
+        Use the provided data to propose a recommended solution.
+        Recommendation should be easy to understand and implement and strongly
+        tied to the data provided.
+        In addition to your recommendations, generate a small simulated dataset
+        (10 rows) that reflects the expected outcomes of your proposal based on the columns in the data.
+        Return the output as VALID JSON with the following schema:
+        {
+          "recommendation": "...",
+          "explanation": "...",
+          "validation_samples": [
+            { "<feature_1>": value, "<feature_2>": value, ... }
+          ]
+        }
 
 agents:
-  CentralExecutive:
+  - name: CentralExecutive
     role: strategic_controller
     avatar: 🧠
     instructions: >
@@ -34,10 +35,10 @@ agents:
       Available agents with capabilities, roles and data scopes:
       {agents}
   
-  BusinessAgent:
+  - name: BusinessAgent
     role: business_performance
     avatar: 👨‍💼
-    data_source: business.csv
+    data_source: data_sources/business.csv
     capabilities:
       - name: cost_optimization
         avatar: 💰📉
@@ -56,10 +57,10 @@ agents:
         features: [revenue, operational_cost, hr_spend, active_customers, product_margin]
         pass_condition: "<2"
 
-  ITAgent:
+  - name: ITAgent
     role: infrastructure_management
     avatar: 🧑‍💻
-    data_source: it.csv
+    data_source: data_sources/it.csv
     capabilities:
       - name: cost_optimization
         avatar: 💰🖥️
@@ -78,10 +79,10 @@ agents:
         features: [traffic, capacity, infra_cost]
         pass_condition: "==1"
 
-  HRAgent:
+  - name: HRAgent
     role: human_resources
     avatar: 👩‍💼
-    data_source: hr.csv
+    data_source: data_sources/hr.csv
     capabilities:
       - name: workforce_efficiency
         avatar: ⚡

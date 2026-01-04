@@ -9,20 +9,29 @@ from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
 
-DATA_SOURCES_DIR = "data_sources/"
-
-
 class WorkerAgent:
-    def __init__(self, name, config, model, mcp_client, manager_name="CentralExecutive"):
+    def __init__(self, config, model, mcp_client, knowledge_retriever, manager_name="CentralExecutive"):
         self.client = mcp_client
         self.manager = manager_name
         self.model = model
         self.config = config
         self.avatar = config.get("avatar", "")
-        self.name = f"{name} {self.avatar}"
+        self.name = f"{config["name"]} {self.avatar}"
         self.data_source = self.config.get("data_source")
-        with open(f"{DATA_SOURCES_DIR}{self.data_source}", 'r') as f:
+        with open(self.data_source, 'r') as f:
             self.data_headers = next(f).strip()
+
+        self.knowledge_retriever = knowledge_retriever
+
+    def get_context(self, task):
+        query = f"Provide context for decision making on this task: {task}"
+        docs = self.knowledge_retriever.invoke(query)
+
+        context = "\n\n".join(
+            f"### {d.metadata.get('source', '')}\n{d.page_content}"
+            for d in docs
+        )
+        return context
 
     async def process_agent_directive(self):
         response = []
@@ -60,9 +69,11 @@ class WorkerAgent:
                     for v in self.config.get("validators", [])])
 
                 logger.info(f"Agent {self.name} found directive for {capability}: {task}")
+                context = self.get_context(task)
                 input_state = { 
                     "prompt": self.config["instructions"],
                     "task": task,
+                    "context": context,
                     "model": self.model,
                     "data_source": self.data_source,
                     "constraints": constraints,
