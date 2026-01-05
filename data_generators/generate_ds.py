@@ -6,9 +6,10 @@ import argparse
 from pathlib import Path
 
 DEPARTMENTS = ["Core", "SaaS", "AI Products"]
-SERVICES = ["Auth", "DataAPI", "Cloud", "Analytics", "AIEngine"]
+SERVICES = ["Auth", "Cloud", "AIEngine"]
 MONTHS = 12
-EMPLOYEES_NUM = 450
+EMPLOYEES_NUM = 100
+DAYS = 15
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_SOURCES_DIR = BASE_DIR / "data_sources"
@@ -40,7 +41,7 @@ def gen_business(seed=None, months=MONTHS):
 
 
 # -------------------- IT --------------------
-def gen_it(seed=None, days: int = int(MONTHS * 30 / 4)):
+def gen_it(seed=None, days: int = DAYS):
     rng = np.random.default_rng(seed)
     rows = []
     for svc in SERVICES:

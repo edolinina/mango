@@ -84,13 +84,24 @@ class WorkerAgent:
                 
                 result_state = await run_agent_network(input_state)
                 results = json.dumps(result_state.get("results"))
-                validation = json.dumps(result_state.get("validation"))
-                validation = "✅ success" if "0 failed" in validation else f"❌ fail ({validation})"
-
+                validation = result_state.get("validation", {})
+                
+                validation_results = ""
+                if validation:
+                    passed = validation.get("passed", 0)
+                    failed = validation.get("failed", 0)
+                    pass_rate = passed / (passed + failed)
+                    if pass_rate == 1.0:
+                        validation = "✅ success"
+                    elif pass_rate >= 0.7:
+                        validation_results = f"🟡 partial pass ({passed} passed, {failed} failed)"
+                    else:
+                        validation_results = f"❌ fail ({passed} passed, {failed} failed)"
+       
                 result = AgentOutput(
                     agent=self.name, 
                     capability=f"{cap["name"]} {cap["avatar"]}", 
-                    validation=validation, 
+                    validation=validation_results, 
                     results=results
                 )
                 response.append(result)

@@ -4,8 +4,14 @@ common:
         Use the provided data to propose a recommended solution.
         Recommendation should be easy to understand and implement and strongly
         tied to the data provided.
+
         In addition to your recommendations, generate a small simulated dataset
         (10 rows) that reflects the expected outcomes of your proposal based on the columns in the data.
+        You MUST generate validation samples that strictly follow the provided 'ALLOWED_FEATURES'.
+        DO NOT INCLUDE any other features into this dataset except the ones stated in 'ALLOWED_FEATURES'.
+        The validation samples should represent the simulated values AFTER applying your recommendation.
+        Each validation sample MUST be a flat JSON object with numeric values only.
+        
         Return the output as VALID JSON with the following schema:
         {
           "recommendation": "...",

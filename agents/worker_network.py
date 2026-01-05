@@ -1,4 +1,5 @@
 import re
+import logging
 import pandas as pd
 
 from typing import TypedDict, List, Any, Optional
@@ -12,6 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
+logger = logging.getLogger("mango")
 
 class AgentState(TypedDict):
     prompt: str
@@ -22,7 +24,7 @@ class AgentState(TypedDict):
     context: str
     data_source: str
     results: dict
-    validation: str
+    validation: dict
 
 class Recommendation(TypedDict):
     recommendation: str
@@ -88,12 +90,12 @@ async def llm_node(state):
 
     validation_features = state.get("validator", {}).get("features", [])
     answer = await model.ainvoke(
-        f"Task: {state["task"]}\n"
+        f"TASK: {state["task"]}\n"
         f"{state["prompt"]}\n"
-        f"Constraints: {state['constraints']}\n"
-        f"Features for validation_samples: {validation_features}\n"
-        f"Data: {data}.\n"
-        f"Context: {state["context"]}"
+        f"CONSTRAINTS: {state['constraints']}\n"
+        f"ALLOWED_FEATURES: {validation_features}\n"
+        f"DATA: {data}\n"
+        f"CONTEXT: {state["context"]}"
     )
 
     results = {"results": answer}
@@ -104,7 +106,19 @@ async def llm_node(state):
         if re.match(r"^[<>=!]=?\s*\d+(\.\d+)?$", pass_condition) is None:
             raise ValueError(f"Invalid pass_condition format: {pass_condition}")
 
-        X_val = pd.DataFrame(answer["validation_samples"])[validation_features]
+        samples = answer.get("validation_samples", [])
+        df_val = pd.DataFrame(samples)
+
+        expected = set(validation_features)
+        if set(df_val.columns) != expected:
+            raise ValueError(
+                f"Invalid validation_samples schema.\n"
+                f"Expected: {expected}\n"
+                f"Got: {df_val.columns.tolist()}\n"
+                f"Raw: {samples}"
+            )
+
+        X_val = df_val[validation_features]
         preds = model.predict(X_val).tolist()
         for pred in preds:
             if eval(f"{pred} {pass_condition}"):
@@ -115,7 +129,10 @@ async def llm_node(state):
         passed = sum(validation_results)
         failed = len(validation_results) - passed
     
-        results["validation"] = f"{passed} passed, {failed} failed"
+        results["validation"] = {
+            "passed": passed,
+            "failed": failed
+        }
 
     return results
 
