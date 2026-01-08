@@ -29,7 +29,7 @@ class MangoOperator:
         ce_config = [a for a in self.config if a["name"] == "CentralExecutive"][0]
         self.ce = CentralExecutive(self.model, self.mcp_client, ce_config, self.agents)
         
-        agents_list = ", ".join([a.name for a in self.agents])
+        agents_list = ", ".join([a.print_name for a in self.agents])
         logger.info(f"Initialized 🥭 MangoOperator with agents: {agents_list}")
 
     async def operational_loop(self, task):
@@ -53,16 +53,16 @@ class MangoOperator:
         for agent, agent_reports in zip(self.agents, all_agent_reports):
             if isinstance(agent_reports, Exception):
                 logger.error(
-                    f"Agent {agent.name} failed with exception:\n"
+                    f"Agent {agent.print_name} failed with exception:\n"
                     f"{''.join(traceback.format_exception(agent_reports))}"
                 )
                 continue
 
             if not agent_reports:
-                logger.info(f"Agent {agent.name} returned no reports.")
+                logger.info(f"Agent {agent.print_name} returned no reports.")
                 continue
 
-            logger.info(f"Operational results for agent {agent.name}:")
+            logger.info(f"Operational results for agent {agent.print_name}:")
             for report in agent_reports:
                 results = json.loads(report.results)
                 logger.info(

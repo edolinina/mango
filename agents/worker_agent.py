@@ -16,7 +16,8 @@ class WorkerAgent:
         self.model = model
         self.config = config
         self.avatar = config.get("avatar", "")
-        self.name = f"{config["name"]} {self.avatar}"
+        self.name = config["name"]
+        self.print_name = f"{config["name"]} {self.avatar}"
         self.data_source = self.config.get("data_source")
         with open(self.data_source, 'r') as f:
             self.data_headers = next(f).strip()
@@ -68,7 +69,7 @@ class WorkerAgent:
                 constraints = "\n".join([f"{v["target"]} {v["pass_condition"]}" \
                     for v in self.config.get("validators", [])])
 
-                logger.info(f"Agent {self.name} found directive for {capability}: {task}")
+                logger.info(f"Agent {self.print_name} found directive for {capability}: {task}")
                 context = self.get_context(task)
                 input_state = { 
                     "prompt": self.config["instructions"],
@@ -92,7 +93,7 @@ class WorkerAgent:
                     failed = validation.get("failed", 0)
                     pass_rate = passed / (passed + failed)
                     if pass_rate == 1.0:
-                        validation = "✅ success"
+                        validation_results = "✅ success"
                     elif pass_rate >= 0.7:
                         validation_results = f"🟡 partial pass ({passed} passed, {failed} failed)"
                     else:
