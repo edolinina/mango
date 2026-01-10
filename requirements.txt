@@ -1,6 +1,22 @@
-chromadb==1.4.0
-fastapi==0.127.0
-fastmcp==2.14.1
-opentelemetry-sdk==1.39.1
-langchain_mcp_adapters==0.2.1
-langchain==1.2.0
+# --- DataSets & ML ---
+numpy
+pandas
+scikit-learn
+
+# --- FastAPI & server ---
+fastapi
+pydantic
+jinja2
+uvicorn[standard]
+
+# --- MCP ---
+fastmcp
+
+# --- LangChain ---
+langchain
+langchain_mcp_adapters
+langchain_community
+langchain_ollama
+langchain_text_splitters
+unstructured[md]
+faiss-cpu

@@ -1,3 +1,4 @@
+import os
 import logging
 import json
 
@@ -23,6 +24,11 @@ class WorkerAgent:
             self.data_headers = next(f).strip()
 
         self.knowledge_retriever = knowledge_retriever
+
+        self.host = config.get("host", "localhost")
+
+        port_env = config.get("port-env")
+        self.port = os.getenv(port_env, "8000")
 
     def get_context(self, task):
         query = f"Provide context for decision making on this task: {task}"

@@ -1,0 +1,88 @@
+x-common-env: &common-env
+  env_file:
+    - .env
+
+volumes:
+  n8n_data:
+  node_red_data:
+
+services:
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mango-mcp
+    image: mango-mcp
+    ports:
+      - "${MCP_PORT}:${MCP_PORT}"
+
+  mango-build-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mango-agent
+    image: mango-agent 
+    command: ["true"]
+
+  ce:
+    image: mango-agent
+    depends_on:
+      - mango-build-agent
+    <<: *common-env
+    environment:
+      SERVICE_MODE: ce
+      SERVICE_PORT: ${CE_PORT}
+    ports:
+      - "${CE_PORT}:${CE_PORT}"
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+
+  business-agent:
+    image: mango-agent
+    depends_on:
+      - mango-build-agent
+    <<: *common-env
+    environment:
+      SERVICE_MODE: agent
+      AGENT_NAME: BusinessAgent
+      SERVICE_PORT: ${BUSINESS_AGENT_PORT}
+    ports:
+      - "${BUSINESS_AGENT_PORT}:${BUSINESS_AGENT_PORT}"
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+
+  it-agent:
+    image: mango-agent
+    depends_on:
+      - mango-build-agent
+    <<: *common-env
+    environment:
+      SERVICE_MODE: agent
+      AGENT_NAME: ITAgent
+      SERVICE_PORT: ${IT_AGENT_PORT}
+    ports:
+      - "${IT_AGENT_PORT}:${IT_AGENT_PORT}"
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+
+  hr-agent:
+    image: mango-agent
+    depends_on:
+      - mango-build-agent
+    <<: *common-env
+    environment:
+      SERVICE_MODE: agent
+      AGENT_NAME: HRAgent
+      SERVICE_PORT: ${HR_AGENT_PORT}
+    ports:
+      - "${HR_AGENT_PORT}:${HR_AGENT_PORT}"
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g

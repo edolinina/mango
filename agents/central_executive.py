@@ -1,3 +1,4 @@
+import json
 import logging
 
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ class CentralExecutive:
 
     async def generate_directives(self, task: str) -> CEOutput:
         """Use LLM ONLY to generate structured directives"""
+        logger.info(f"CE task: {task}.")
         directive = self.instructions.format(
             task=task,
             agents={
@@ -36,13 +38,14 @@ class CentralExecutive:
                 for a in self.agents
             }
         )
-        logger.debug(f"Directive details: {directive}")
         return await self.model.ainvoke(directive)
 
     async def send_directives(self, intent: CEOutput):
         """Send directives to MCP"""
         mcp_endpoint = await get_mcp_endpoint(self.client, "send_directive")
         results = []
+
+        logger.info("Sending directives to agents:")
         for d in intent.directives:
             directive = d.model_dump()
             logger.info(
@@ -56,5 +59,22 @@ class CentralExecutive:
             )
             res = await mcp_endpoint.ainvoke({"envelope": envelope.model_dump()})
             results.append(res)
+
+        return results
+    
+    async def collect_agent_feedback(self):
+        mcp_endpoint = await get_mcp_endpoint(self.client, "list_messages")
+        if not mcp_endpoint:
+            return {}
+
+        messages = await mcp_endpoint.ainvoke({})
+
+        results = {}
+        for msg in messages:
+            parsed = json.loads(msg["text"])
+            for entry in parsed:
+                if entry.get("message_type") == "agent_feedback":
+                    agent = entry["sender"]
+                    results.setdefault(agent, []).append(entry["payload"])
 
         return results

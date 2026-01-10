@@ -1,11 +1,9 @@
-
+import os
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.document_loaders.markdown import UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-from utils.helpers import load_config
 
 
 KNOWLEDGE_BASE_PATH = "knowledge_base"
@@ -20,12 +18,12 @@ def load_knowledge():
 
 def get_knowledge_retriever():
     docs = load_knowledge()
-    config = load_config("base.yaml")
-    ollama_config = config["ollama"]
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    embedding_model = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
 
     embeddings = OllamaEmbeddings(
-        model=ollama_config["embedding-model"]["name"],
-        base_url=ollama_config["base_url"]
+        base_url=ollama_url,
+        model=embedding_model,
     )
 
     splitter = RecursiveCharacterTextSplitter(

@@ -1,10 +1,12 @@
+import os
+
 from fastmcp import FastMCP
 from mcp_server.protocol import MCPEnvelope, Directive, AgentOutput
 
 mcp = FastMCP("MANGO-MCP")
 
-# in-memory messages and directives store
-MESSAGES: list[MCPEnvelope] = []
+MCP_PORT = os.getenv("MCP_PORT", 8000)
+MESSAGES: list[MCPEnvelope] = [] # in-memory messages and directives store
 
 def _find_message_by_id(id: str) -> MCPEnvelope | None:
     for msg in MESSAGES:
@@ -19,9 +21,6 @@ def send_directive(envelope: dict) -> str:
 
     payload = Directive(**msg.payload)
     return f"Directive '{payload.task}' accepted"
-   # payload = Directive(**msg.payload)
-   # DIRECTIVES[payload.id] = payload.model_dump()
-   # return f"Directive '{payload.task}' accepted"
 
 @mcp.tool()
 def remove_directive(id: str) -> str:
@@ -47,4 +46,4 @@ def list_messages() -> list:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="127.0.0.1", port=8000)
+    mcp.run(transport="http", host="0.0.0.0", port=MCP_PORT)

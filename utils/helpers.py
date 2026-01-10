@@ -1,10 +1,13 @@
+import os
 import yaml
 import logging
+import httpx
 
 from langchain_ollama import ChatOllama
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 CONFIG_PATH = "config"
+
 
 class color:
     BOLD = '\033[1m'
@@ -32,21 +35,22 @@ def load_config(config_file) -> dict:
         raise
 
 def load_model() -> ChatOllama:
-    config = load_config("base.yaml")
-    ollama_config = config["ollama"]
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    llm_model = os.getenv("LLM_MODEL", "gpt-oss:20b")
     return ChatOllama(
-        base_url=ollama_config["base_url"],
-        model=ollama_config["llm-model"]["name"],
-        temperature=ollama_config["llm-model"]["temperature"]
+        base_url=ollama_url,
+        model=llm_model,
+        temperature=0.2
     )
 
 def get_mcp_client():
-    mcp_config = load_config("base.yaml")["mcp"]
+    mcp_host = os.getenv("MCP_HOST", "localhost")
+    mcp_port = os.getenv("MCP_PORT", 8000)
     return MultiServerMCPClient(
         {
             "mango": {
-                "transport": mcp_config["schema"],
-                "url": f"{mcp_config['schema']}://{mcp_config['host']}:{mcp_config['port']}/mcp",
+                "transport": "http",
+                "url": f"http://{mcp_host}:{mcp_port}/mcp",
             }
         }
     )
