@@ -5,8 +5,6 @@ const taskEl = document.getElementById("task");
 const runBtn = document.getElementById("runBtn");
 
 let poller = null;
-
-// 🔹 GLOBAL state (FIX #1)
 let expectedAgents = [];
 let finishedAgents = new Set();
 
@@ -31,7 +29,7 @@ async function run() {
 
   // ---- render agents (initial, spinning)
   if (data.agents) {
-    expectedAgents = data.agents.slice(); // keep original names with emoji
+    expectedAgents = data.agents.slice();
 
     agentsEl.innerHTML = `
       <div class="agents-list">
@@ -64,7 +62,6 @@ function renderResults(results) {
 
   agents.forEach(a => finishedAgents.add(cleanName(a.agent)));
 
-  // ---- update agent icons (FIX #2)
   const allFinished = finishedAgents.size === expectedAgents.length;
 
   // Map agent labels to their results for quick lookup
@@ -95,10 +92,8 @@ function renderResults(results) {
     }
   `;
 
-  // Remove agent results from main output, just show instructions
   output.innerHTML = `<div class="agent-results-instructions">Click an agent icon to view its results.</div>`;
 
-  // Add modal HTML if not present
   if (!document.getElementById("agentModal")) {
     const modalDiv = document.createElement("div");
     modalDiv.id = "agentModal";
@@ -126,7 +121,7 @@ function renderResults(results) {
     }
   });
 
-  // ---- stop polling when done (FIX #3)
+  // ---- stop polling when done
   if (finishedAgents.size === expectedAgents.length) {
     clearInterval(poller);
     spinner.style.display = "none";
@@ -135,7 +130,6 @@ function renderResults(results) {
   }
 }
 
-// Modal helpers
 function showAgentModal(label, agentObj) {
   const modal = document.getElementById("agentModal");
   const body = document.getElementById("agentModalBody");
