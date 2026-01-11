@@ -1,4 +1,5 @@
 import os
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.document_loaders.markdown import UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
@@ -18,12 +19,8 @@ def load_knowledge():
 
 def get_knowledge_retriever():
     docs = load_knowledge()
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
-    embedding_model = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
-
-    embeddings = OllamaEmbeddings(
-        base_url=ollama_url,
-        model=embedding_model,
+    embeddings = HuggingFaceEmbeddings(
+        model_name=os.getenv("EMBEDDING_MODEL")
     )
 
     splitter = RecursiveCharacterTextSplitter(

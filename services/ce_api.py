@@ -3,12 +3,15 @@ import httpx
 import logging
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
+static_files = StaticFiles(directory="static")
 
 
 # ---------- async workflow ----------
@@ -57,6 +60,7 @@ def create_ce_app(ce):
     # ---------- UI ----------
     @app.get("/")
     async def ui(request: Request):
+        app.mount("/static", static_files, name="static")
         return templates.TemplateResponse(
             "index.html",
             {"request": request}

@@ -21,6 +21,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PYTHONPATH=/app
+ENV HF_HOME=/app/models
+
+ARG EMBEDDING_MODEL
+ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
+
+# Pre-download SentenceTransformer model to cache it in the image
+RUN python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='${EMBEDDING_MODEL}')"
+RUN rm -rf /root/.cache/huggingface
 
 # ---------- AGENT ----------
 FROM mango-base AS mango-agent

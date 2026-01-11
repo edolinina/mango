@@ -2,8 +2,9 @@ common:
   reasoning:
     prompt: >
         Use the provided data to propose a recommended solution.
-        Recommendation should be easy to understand and implement and strongly
-        tied to the data provided.
+        Recommendation should be brief (2-3 sentences), easy to understand and implement and strongly
+        tied to the data provided. Provide explanation of how you arrived at this recommendation 
+        based on the data analysis in a concise manner (no more than 2-3 sentences).
 
         In addition to your recommendations, generate a small simulated dataset
         (10 rows) that reflects the expected outcomes of your proposal based on the columns in the data.

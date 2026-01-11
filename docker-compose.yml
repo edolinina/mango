@@ -2,10 +2,6 @@ x-common-env: &common-env
   env_file:
     - .env
 
-volumes:
-  n8n_data:
-  node_red_data:
-
 services:
   mcp:
     build:
@@ -21,6 +17,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: mango-agent
+      args:
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL}
     image: mango-agent 
     command: ["true"]
 
@@ -32,6 +30,7 @@ services:
     environment:
       SERVICE_MODE: ce
       SERVICE_PORT: ${CE_PORT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${CE_PORT}:${CE_PORT}"
     deploy:
@@ -48,6 +47,7 @@ services:
       SERVICE_MODE: agent
       AGENT_NAME: BusinessAgent
       SERVICE_PORT: ${BUSINESS_AGENT_PORT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${BUSINESS_AGENT_PORT}:${BUSINESS_AGENT_PORT}"
     deploy:
@@ -64,6 +64,7 @@ services:
       SERVICE_MODE: agent
       AGENT_NAME: ITAgent
       SERVICE_PORT: ${IT_AGENT_PORT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${IT_AGENT_PORT}:${IT_AGENT_PORT}"
     deploy:
@@ -80,6 +81,7 @@ services:
       SERVICE_MODE: agent
       AGENT_NAME: HRAgent
       SERVICE_PORT: ${HR_AGENT_PORT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${HR_AGENT_PORT}:${HR_AGENT_PORT}"
     deploy:

@@ -17,6 +17,9 @@ langchain
 langchain_mcp_adapters
 langchain_community
 langchain_ollama
+langchain_openai
 langchain_text_splitters
+langchain_huggingface
+sentence-transformers
 unstructured[md]
 faiss-cpu

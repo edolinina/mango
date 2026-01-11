@@ -4,6 +4,7 @@ import logging
 import httpx
 
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 CONFIG_PATH = "config"
@@ -34,14 +35,32 @@ def load_config(config_file) -> dict:
         print(f"Unexpected error loading spec from '{config_path}'")
         raise
 
-def load_model() -> ChatOllama:
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
-    llm_model = os.getenv("LLM_MODEL", "gpt-oss:20b")
-    return ChatOllama(
-        base_url=ollama_url,
-        model=llm_model,
-        temperature=0.2
-    )
+def load_model():
+    provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+    temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+
+    if provider == "ollama":
+        return ChatOllama(
+            base_url=os.getenv("OLLAMA_URL", "http://localhost:11434"),
+            model=os.getenv("LLM_MODEL", "gpt-oss:20b"),
+            temperature=temperature,
+        )
+
+    elif provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "LLM_PROVIDER=openai but OPENAI_API_KEY is not set"
+            )
+
+        return ChatOpenAI(
+            api_key=api_key,
+            model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            temperature=temperature,
+        )
+
+    else:
+        raise RuntimeError(f"Unsupported LLM_PROVIDER: {provider}")
 
 def get_mcp_client():
     mcp_host = os.getenv("MCP_HOST", "localhost")
