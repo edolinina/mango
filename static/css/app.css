@@ -270,3 +270,11 @@ pre {
     font-weight: 600;
     font-size: 1.1em;
 }
+
+.done-instruction {
+    display: block;
+    color: #38bdf8;
+    font-size: 0.98em;
+    font-weight: 400;
+    margin-top: 6px;
+}
