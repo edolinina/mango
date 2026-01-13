@@ -8,6 +8,20 @@ Modern large-scale organizations continue to operate with hierarchical structure
 
 ---
 
+
+## Research Goals
+
+MANGO is designed to answer the question:  
+**Can AI systems be designed to assume part of the managerial workload and enable more adaptive, flatter organizational structures?**
+
+By orchestrating distributed, context-aware, and collaborative AI agents, MANGO aims to:
+
+- Reduce reliance on rigid hierarchies.
+- Improve organizational responsiveness.
+- Enable scalable, data-driven decision-making.
+
+---
+
 ## Key Features
 
 - **Agentic Orchestration:**  
@@ -119,31 +133,6 @@ All relevant configuration options are managed in the `.env` file.
 
 ---
 
-## Research Goals
-
-MANGO is designed to answer the question:  
-**Can AI systems be designed to assume part of the managerial workload and enable more adaptive, flatter organizational structures?**
-
-By orchestrating distributed, context-aware, and collaborative AI agents, MANGO aims to:
-
-- Reduce reliance on rigid hierarchies.
-- Improve organizational responsiveness.
-- Enable scalable, data-driven decision-making.
-
----
-
-## License
-
-This project is for research and prototyping purposes. See `LICENSE` for details.
-
----
-
-## Acknowledgments
-
-MANGO builds on modern AI, agentic architectures, and orchestration patterns to push the boundaries of AI-assisted management and organizational design.
-
----
-
 ## Deployment
 
 MANGO is containerized for easy deployment using Docker Compose.
@@ -174,3 +163,15 @@ To stop all running containers, use:
 ```bash
 docker-compose down
 ```
+
+---
+
+## License
+
+This project is for research and prototyping purposes. See `LICENSE` for details.
+
+---
+
+## Acknowledgments
+
+MANGO builds on modern AI, agentic architectures, and orchestration patterns to push the boundaries of AI-assisted management and organizational design.
