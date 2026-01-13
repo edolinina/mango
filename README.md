@@ -67,13 +67,18 @@ All relevant configuration options are managed in the `.env` file.
 
 ---
 
-## Deployment
+## Deployment & Usage
 
 MANGO is containerized for easy deployment using Docker Compose.
 
 ### Prerequisites
 
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) must be installed and running on your system.
+
+### Configuration
+
+- All configuration and startup variables are stored in the `.env` file at the project root.
+- Edit this file to set environment variables as needed for your deployment.
 
 ### Starting MANGO
 
@@ -93,21 +98,11 @@ To stop all running containers, use:
 docker-compose down
 ```
 
----
-
-## Usage
-
-### 1. Start the Backend (for development)
-
-```bash
-uvicorn services.ce_api:create_ce_app --reload
-```
-
-### 2. Access the UI
+### Accessing the UI
 
 Open your browser and navigate to [http://localhost:8000](http://localhost:8000).
 
-### 3. Submit a Task
+### Submitting a Task
 
 - Enter a high-level task in the input field and click **Run**.
 - In non-autonomous mode, review the generated directives and approve or reject the plan.
