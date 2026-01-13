@@ -1,12 +1,11 @@
 from agents.central_executive import CentralExecutive
 from agents.worker_agent import WorkerAgent
-from utils.helpers import load_config, load_model, get_mcp_client, setup_logger
+from utils.helpers import load_config, load_model, get_mcp_client
 from utils.knowledge import get_knowledge_retriever
 
 def init_system():
     mcp_client = get_mcp_client()
     config = load_config("agents.yaml")
-    logger = setup_logger()
 
     model = load_model()
     knowledge_retriever = get_knowledge_retriever()

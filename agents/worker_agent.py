@@ -2,13 +2,12 @@ import os
 import logging
 import json
 
-from langchain.agents import create_agent
-
-from mcp_server.protocol import AgentOutput, MCPEnvelope
+from mcp_server.protocol import AgentOutput
 from agents.worker_network import run_agent_network
 from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
+
 
 class WorkerAgent:
     def __init__(self, config, model, mcp_client, knowledge_retriever, manager_name="CentralExecutive"):
@@ -19,16 +18,14 @@ class WorkerAgent:
         self.avatar = config.get("avatar", "")
         self.name = config["name"]
         self.print_name = f"{config["name"]} {self.avatar}"
+        self.host = config.get("host", "localhost")
+        port_env = config.get("port-env")
+        self.port = os.getenv(port_env, "8000")
         self.data_source = self.config.get("data_source")
         with open(self.data_source, 'r') as f:
             self.data_headers = next(f).strip()
 
         self.knowledge_retriever = knowledge_retriever
-
-        self.host = config.get("host", "localhost")
-
-        port_env = config.get("port-env")
-        self.port = os.getenv(port_env, "8000")
 
     def get_context(self, task):
         query = f"Provide context for decision making on this task: {task}"

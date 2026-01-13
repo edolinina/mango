@@ -4,7 +4,6 @@ import logging
 
 from pydantic import BaseModel, Field
 from typing import List
-from langchain.agents import create_agent
 
 from mcp_server.protocol import MCPEnvelope, Directive
 from utils.helpers import get_mcp_endpoint
@@ -47,6 +46,7 @@ class CentralExecutive:
         return directives
     
     def update_directives(self, directives: CEOutput):
+        """Set current directives"""
         self.directives = directives
 
     async def send_directives(self, intent: CEOutput):

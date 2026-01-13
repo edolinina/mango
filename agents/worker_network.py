@@ -136,8 +136,6 @@ async def llm_node(state):
 
     return results
 
-def reinforcement_learning_node(state):
-    return {"results": {"learner": {"policy": "updated"}}}
 
 def aggregate_node(state: AgentState) -> AgentState:
     return state
