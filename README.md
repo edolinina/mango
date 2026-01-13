@@ -8,39 +8,14 @@ Modern large-scale organizations continue to operate with hierarchical structure
 
 ---
 
-
-## Research Goals
-
-MANGO is designed to answer the question:  
-**Can AI systems be designed to assume part of the managerial workload and enable more adaptive, flatter organizational structures?**
-
-By orchestrating distributed, context-aware, and collaborative AI agents, MANGO aims to:
-
-- Reduce reliance on rigid hierarchies.
-- Improve organizational responsiveness.
-- Enable scalable, data-driven decision-making.
-
----
-
 ## Key Features
 
-- **Agentic Orchestration:**  
-  MANGO coordinates multiple specialized AI agents, each with distinct capabilities and roles, to collaboratively solve complex tasks.
-
-- **Central Executive (CE):**  
-  The CE agent receives high-level tasks, generates structured directives, and orchestrates the workflow by delegating subtasks to appropriate agents.
-
-- **Directive Management:**  
-  Each task is assigned a unique `directive_id`, ensuring that agent feedback and results are correctly matched to the originating directive, enabling parallel and isolated task execution.
-
-- **Approval Workflow:**  
-  MANGO supports both autonomous and human-in-the-loop modes. In non-autonomous mode, the system pauses after directive generation and presents the user with a summary for approval or rejection before proceeding.
-
-- **Agent Feedback Collection:**  
-  The system collects and aggregates feedback from agents, filtered by `directive_id`, and presents results in a user-friendly UI.
-
-- **Extensible Agent Design:**  
-  Agents can be easily added or configured with different capabilities, roles, and data access, supporting a wide range of enterprise scenarios.
+- **Agentic Orchestration:** Coordinates multiple specialized AI agents, each with distinct capabilities and roles, to collaboratively solve complex tasks.
+- **Central Executive (CE):** Receives high-level tasks, generates structured directives, and orchestrates the workflow by delegating subtasks to appropriate agents.
+- **Directive Management:** Each task is assigned a unique `directive_id`, ensuring agent feedback and results are correctly matched to the originating directive.
+- **Approval Workflow:** Supports both autonomous and human-in-the-loop modes. In non-autonomous mode, the system pauses after directive generation and presents the user with a summary for approval or rejection before proceeding.
+- **Agent Feedback Collection:** Aggregates feedback from agents, filtered by `directive_id`, and presents results in a user-friendly UI.
+- **Extensible Agent Design:** Agents can be easily added or configured with different capabilities, roles, and data access.
 
 ---
 
@@ -64,17 +39,73 @@ By orchestrating distributed, context-aware, and collaborative AI agents, MANGO 
 
 ---
 
-## Usage
+## Language Model Provider Support
 
-### 1. Start the Service
+MANGO supports both cloud-based and local language models:
+
+- **OpenAI:**  
+  To use OpenAI models, set `LLM_PROVIDER=openai` in your `.env` file and provide your OpenAI API key as the environment variable `OPENAI_API_KEY`.
+
+- **Ollama (Local LLM):**  
+  To use a local LLM via [Ollama](https://ollama.com/), set `LLM_PROVIDER=ollama` and configure the `OLLAMA_URL` and `LLM_MODEL` variables in your `.env` file.
+
+You can switch between providers by changing the `LLM_PROVIDER` value in `.env`:
+
+```dotenv
+LLM_PROVIDER=ollama   # or 'openai'
+```
+
+All relevant configuration options are managed in the `.env` file.
+
+---
+
+## Configuration
+
+- All configuration and startup variables are stored in the `.env` file at the project root.
+- Edit this file to set environment variables as needed for your deployment.
+- Example variables include agent ports, LLM provider/model, and autonomous mode.
+
+---
+
+## Deployment
+
+MANGO is containerized for easy deployment using Docker Compose.
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) must be installed and running on your system.
+
+### Starting MANGO
+
+From the project root directory, run:
 
 ```bash
 ./start_mango.sh
 ```
 
+This script will use `docker-compose.yml` to build and start all required services.
+
+### Stopping MANGO
+
+To stop all running containers, use:
+
+```bash
+docker-compose down
+```
+
+---
+
+## Usage
+
+### 1. Start the Backend (for development)
+
+```bash
+uvicorn services.ce_api:create_ce_app --reload
+```
+
 ### 2. Access the UI
 
-Open your browser and navigate to [http://localhost:8000](http://localhost:8001).
+Open your browser and navigate to [http://localhost:8000](http://localhost:8000).
 
 ### 3. Submit a Task
 
@@ -103,66 +134,16 @@ Open your browser and navigate to [http://localhost:8000](http://localhost:8001)
 
 ---
 
-## Configuration
+## Research Goals
 
-- **Autonomous Mode:**  
-  Set the environment variable `AUTONOMOUS_MODE=true` to enable fully automated execution without human approval.
+MANGO is designed to answer the question:  
+**Can AI systems be designed to assume part of the managerial workload and enable more adaptive, flatter organizational structures?**
 
-- **Agent Configuration:**  
-  Agents and their capabilities are defined in the configuration files and can be extended as needed.
+By orchestrating distributed, context-aware, and collaborative AI agents, MANGO aims to:
 
----
-
-## Language Model Provider Support
-
-MANGO supports both cloud-based and local language models:
-
-- **OpenAI:**  
-  To use OpenAI models, set `LLM_PROVIDER=openai` in your `.env` file and provide your OpenAI API key as the environment variable `OPENAI_API_KEY`.
-
-- **Ollama (Local LLM):**  
-  To use a local LLM via [Ollama](https://ollama.com/), set `LLM_PROVIDER=ollama` and configure the `OLLAMA_URL` and `LLM_MODEL` variables in your `.env` file.
-
-You can switch between providers by changing the `LLM_PROVIDER` value in `.env`:
-
-```dotenv
-LLM_PROVIDER=ollama   # or 'openai'
-```
-
-All relevant configuration options are managed in the `.env` file.
-
----
-
-## Deployment
-
-MANGO is containerized for easy deployment using Docker Compose.
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) must be installed and running on your system.
-
-### Configuration
-
-- All configuration and startup variables are stored in the `.env` file at the project root.  
-  Edit this file to set environment variables as needed for your deployment.
-
-### Starting MANGO
-
-From the project root directory, run:
-
-```bash
-./start_mango.sh
-```
-
-This script will use `docker-compose.yml` to build and start all required services.
-
-### Stopping MANGO
-
-To stop all running containers, use:
-
-```bash
-docker-compose down
-```
+- Reduce reliance on rigid hierarchies.
+- Improve organizational responsiveness.
+- Enable scalable, data-driven decision-making.
 
 ---
 
