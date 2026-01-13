@@ -21,3 +21,4 @@ class AgentOutput(BaseModel):
     capability: str
     results: str
     validation: str
+    task_id: str

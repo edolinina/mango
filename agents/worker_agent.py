@@ -109,7 +109,8 @@ class WorkerAgent:
                     agent=self.name, 
                     capability=f"{cap["name"]} {cap["avatar"]}", 
                     validation=validation_results, 
-                    results=results
+                    results=results,
+                    task_id=directive.get("task_id", "")
                 )
                 response.append(result)
 

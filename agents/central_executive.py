@@ -1,7 +1,8 @@
 import json
+import uuid
 import logging
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from langchain.agents import create_agent
 
@@ -13,6 +14,7 @@ logger = logging.getLogger("mango")
 
 class CEOutput(BaseModel):
     directives: List[Directive]
+    task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 
 class CentralExecutive:
@@ -23,6 +25,7 @@ class CentralExecutive:
         self.avatar = config.get("avatar", "")
         self.name = f"CentralExecutive {self.avatar}"
         self.agents = agents
+        self.task_id = None
 
     async def generate_directives(self, task: str) -> CEOutput:
         """Use LLM ONLY to generate structured directives"""
@@ -38,7 +41,9 @@ class CentralExecutive:
                 for a in self.agents
             }
         )
-        return await self.model.ainvoke(directive)
+        directives = await self.model.ainvoke(directive)
+        self.task_id = directives.task_id
+        return directives
 
     async def send_directives(self, intent: CEOutput):
         """Send directives to MCP"""
@@ -51,6 +56,8 @@ class CentralExecutive:
             logger.info(
                 f"Directive for {d.agent}: {d.task} Capability to use: {d.capability}"
             )
+
+            directive["task_id"] = intent.task_id
             envelope = MCPEnvelope(
                 message_type="directive",
                 sender="CentralExecutive",
@@ -73,8 +80,13 @@ class CentralExecutive:
         for msg in messages:
             parsed = json.loads(msg["text"])
             for entry in parsed:
-                if entry.get("message_type") == "agent_feedback":
-                    agent = entry["sender"]
-                    results.setdefault(agent, []).append(entry["payload"])
+                if entry.get("message_type") != "agent_feedback":
+                    continue
+
+                if entry.get("payload", {}).get("task_id") != str(self.task_id):
+                    continue
+                    
+                agent = entry["sender"]
+                results.setdefault(agent, []).append(entry["payload"])
 
         return results
