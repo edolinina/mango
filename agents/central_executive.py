@@ -26,6 +26,7 @@ class CentralExecutive:
         self.name = f"CentralExecutive {self.avatar}"
         self.agents = agents
         self.task_id = None
+        self.directives = None
 
     async def generate_directives(self, task: str) -> CEOutput:
         """Use LLM ONLY to generate structured directives"""
@@ -44,6 +45,9 @@ class CentralExecutive:
         directives = await self.model.ainvoke(directive)
         self.task_id = directives.task_id
         return directives
+    
+    def update_directives(self, directives: CEOutput):
+        self.directives = directives
 
     async def send_directives(self, intent: CEOutput):
         """Send directives to MCP"""

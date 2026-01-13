@@ -1,3 +1,4 @@
+import os
 import asyncio
 import httpx
 import logging
@@ -15,12 +16,12 @@ static_files = StaticFiles(directory="static")
 
 
 # ---------- async workflow ----------
-async def run_workflow_async(ce, directives):
+async def run_workflow_async(ce):
     try:
         logger.info("Starting workflow")
 
         # send directives to MCP
-        await ce.send_directives(directives)
+        await ce.send_directives(ce.directives)
         logger.info("Directives sent")
 
         # give agents time to start
@@ -46,8 +47,8 @@ async def run_workflow_async(ce, directives):
 
 
 # ---------- background wrapper ----------
-def run_workflow_bg(ce, directives):
-    asyncio.run(run_workflow_async(ce, directives))
+def run_workflow_bg(ce):
+    asyncio.run(run_workflow_async(ce))
 
 
 # ---------- FastAPI app ----------
@@ -72,14 +73,44 @@ def create_ce_app(ce):
         logger.info(f"Generating directives for CE task: {req.task}")
 
         directives = await ce.generate_directives(req.task)
+        ce.update_directives(directives)
 
-        # MUST use sync wrapper for BackgroundTasks
-        background.add_task(run_workflow_bg, ce, directives)
+        if os.getenv("AUTONOMOUS_MODE", "false").lower() != "true":
+            directives_text = "\n".join(
+                f"- {d.agent}: {d.task} (Capability: {d.capability})"
+                for d in directives.directives
+            )
+            return {
+                "status": "pending",
+                "directives": directives_text,
+            }
+
+        background.add_task(run_workflow_bg, ce)
 
         return {
             "status": "running",
             "agents": [agent.print_name for agent in ce.agents],
         }
+    
+    # ---------- Approve directives ----------
+    @app.post("/approve")
+    async def approve(background: BackgroundTasks):
+        logger.info(f"Running approved directives for CE task")
+        background.add_task(run_workflow_bg, ce)
+        return {
+            "status": "running",
+            "agents": [agent.print_name for agent in ce.agents],
+        }
+    
+    # ---------- Reject directives ----------
+    @app.post("/reject")
+    async def reject():
+        logger.info(f"Cancelling directives for CE task")
+        ce.update_directives(None)
+        return {
+            "status": "rejected",
+        }
+
 
     # ---------- Results polling ----------
     @app.get("/results")

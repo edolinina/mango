@@ -27,6 +27,27 @@ async function run() {
 
   const data = await res.json();
 
+  // --- Approval modal if status is pending ---
+  if (data.status === "pending") {
+    showApprovalModal(async (approved) => {
+      if (approved) {
+        const approveRes = await fetch("/approve", { method: "POST" });
+        const approveData = await approveRes.json();
+        setTimeout(() => handleRunContinue(approveData), 0);
+      } else {
+        await fetch("/reject", { method: "POST" });
+        spinner.style.display = "none";
+        runBtn.disabled = false;
+        runBtn.style.display = "";
+      }
+    }, data.directives);
+    return;
+  }
+
+  handleRunContinue(data);
+}
+
+function handleRunContinue(data) {
   // ---- render agents (initial, spinning)
   if (data.agents) {
     expectedAgents = data.agents.slice();
@@ -164,6 +185,36 @@ function showAgentModal(label, agentObj) {
 function hideAgentModal() {
   const modal = document.getElementById("agentModal");
   if (modal) modal.style.display = "none";
+}
+
+// --- Approval Modal Helper ---
+function showApprovalModal(callback, directivesText) {
+  let modal = document.getElementById("approvalModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "approvalModal";
+    modal.innerHTML = `
+      <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:2000;"></div>
+      <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em;z-index:2001;max-width:90vw;max-height:80vh;overflow:auto;border-radius:10px;box-shadow:0 2px 16px #0002;">
+        <div style="font-size:1.2em;margin-bottom:1em;">
+          Approve this task?
+          ${directivesText ? `<div style="margin-top:1em;white-space:pre-wrap;font-size:0.92em;color:#333;border:1px solid #eee;padding:0.7em;border-radius:6px;background:#fafbfc;">${directivesText}</div>` : ""}
+        </div>
+        <button id="approveBtn" style="margin-right:1em;">Approve</button>
+        <button id="rejectBtn">Reject</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.style.display = "block";
+  modal.querySelector("#approveBtn").onclick = () => {
+    modal.style.display = "none";
+    callback(true);
+  };
+  modal.querySelector("#rejectBtn").onclick = () => {
+    modal.style.display = "none";
+    callback(false);
+  };
 }
 
 // ---------- helpers ----------
