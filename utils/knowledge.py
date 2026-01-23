@@ -3,7 +3,6 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.document_loaders.markdown import UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
-from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 

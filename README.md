@@ -65,6 +65,11 @@ All relevant configuration options are managed in the `.env` file.
 - Edit this file to set environment variables as needed for your deployment.
 - Example variables include agent ports, LLM provider/model, and autonomous mode.
 
+**Execution Modes:**
+
+- `AUTONOMOUS_MODE=true`: MANGO runs fully automated, executing directives and triggering agents without user intervention.
+- `AUTONOMOUS_MODE=false`: Human-In-The-Loop (HITL) mode. The system pauses for user approval after directive generation before proceeding.
+
 ---
 
 ## Deployment & Usage
