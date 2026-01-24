@@ -134,6 +134,20 @@ Open your browser and navigate to [http://localhost:8000](http://localhost:8000)
 
 ---
 
+## Result Evaluation
+
+MANGO includes automated evaluation of agent outputs using statistical and machine learning techniques.  
+When a directive specifies validation requirements, the agent network:
+
+- Trains a validation model (regression or classification) on provided data using scikit-learn.
+- Applies constraints and pass conditions (e.g., thresholds, expected values) to agent recommendations.
+- Samples agent outputs and validates them against the trained model and specified conditions.
+- Reports the number of passed and failed validation samples for each agent's recommendation.
+
+This ensures that agentic decisions are not only generated but also quantitatively assessed for reliability and correctness before being presented or acted upon.
+
+---
+
 ## Research Goals
 
 MANGO is designed to answer the question:  
