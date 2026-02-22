@@ -22,6 +22,15 @@ services:
     image: mango-agent 
     command: ["true"]
 
+  trainer:
+    image: mango-agent
+    depends_on:
+      - mango-build-agent
+    command: ["python3", "train_validators.py"]
+    <<: *common-env
+    volumes:
+      - ./models:${TRAINED_MODELS_PATH}
+
   ce:
     image: mango-agent
     depends_on:
@@ -33,6 +42,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${CE_PORT}:${CE_PORT}"
+    volumes:
+      - ./models:${TRAINED_MODELS_PATH}
     deploy:
       resources:
         limits:
@@ -50,6 +61,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${BUSINESS_AGENT_PORT}:${BUSINESS_AGENT_PORT}"
+    volumes:
+      - ./models:${TRAINED_MODELS_PATH}
     deploy:
       resources:
         limits:
@@ -65,6 +78,8 @@ services:
       AGENT_NAME: ITAgent
       SERVICE_PORT: ${IT_AGENT_PORT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+    volumes:
+      - ./models:${TRAINED_MODELS_PATH}
     ports:
       - "${IT_AGENT_PORT}:${IT_AGENT_PORT}"
     deploy:
@@ -84,6 +99,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${HR_AGENT_PORT}:${HR_AGENT_PORT}"
+    volumes:
+      - ./models:${TRAINED_MODELS_PATH}
     deploy:
       resources:
         limits:

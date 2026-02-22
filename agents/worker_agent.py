@@ -7,7 +7,7 @@ from agents.worker_network import run_agent_network
 from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
-
+TRAINED_MODELS_PATH = os.getenv("TRAINED_MODELS_PATH", "models")
 
 class WorkerAgent:
     def __init__(self, config, model, mcp_client, knowledge_retriever, manager_name="CentralExecutive"):
@@ -84,7 +84,20 @@ class WorkerAgent:
                 }
 
                 if validator:
-                    input_state["validator"] = [v for v in self.config["validators"] if v["name"] == validator][0]
+                    validator_config = [v for v in self.config.get("validators", []) if v["name"] == validator]
+                    if not validator_config:
+                        logger.info(f"Validator {validator} not found for agent {self.name}")
+                        continue
+
+                    validator_config = validator_config[0]
+                    input_state["validator"] = validator_config
+                    validator_model_path = os.path.join(
+                        TRAINED_MODELS_PATH,
+                        self.name,
+                        f"{validator_config['name']}.pkl"
+                    )
+                    input_state["validator"]["model_path"] = validator_model_path
+
                 
                 result_state = await run_agent_network(input_state)
                 results = json.dumps(result_state.get("results"))

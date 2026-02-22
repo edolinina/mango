@@ -1,4 +1,6 @@
 import re
+import os
+import joblib
 import logging
 import pandas as pd
 
@@ -33,7 +35,7 @@ class Recommendation(TypedDict):
 
 
 # --- Nodes implementations ---
-def validator_training_node(state):
+def load_validator(state):
     data_source = state["data_source"]
     validator = state["validator"]
     target = validator["target"]
@@ -50,8 +52,6 @@ def validator_training_node(state):
             f"Missing: {missing}, Available: {df.columns.tolist()}"
         )
 
-    X = df[features]
-    y = df[target]
     mean_y = df[target].mean()
     min_y = df[target].min()
     max_y = df[target].max()
@@ -60,81 +60,73 @@ def validator_training_node(state):
     pass_condition = pass_condition.replace("MIN", str(min_y))
     pass_condition = pass_condition.replace("MAX", str(max_y))
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.3, random_state=42
-    )
+    model_path = validator.get("model_path")
+    if not os.path.exists(model_path):
+        raise ValueError(f"Pretrained model not found: {model_path}")
 
-    # classification vs regression based on target type
-    if y.dtype.kind in {"i", "b"} and y.nunique() <= 10:
-        engine = LogisticRegression(max_iter=100)
-    else:
-        engine = LinearRegression()
-
-    model = Pipeline([
-        ("scaler", StandardScaler()),
-        ("engine", engine)
-    ])
-
-    model.fit(X_train, y_train)
-    state["validator"]["model"] = model
+    state["validator"]["model"] = joblib.load(model_path)
     state["validator"]["pass_condition"] = pass_condition
     return state
 
 
 async def llm_node(state):
-    model = state["model"].with_structured_output(Recommendation) 
-    data_source = state["data_source"]
-    if data_source:
-        with open(data_source, 'r') as f:
-            data = f.read()
+    model = state["model"].with_structured_output(Recommendation)
+
+    with open(state["data_source"], "r") as f:
+        data = f.read()
 
     validation_features = state.get("validator", {}).get("features", [])
+
     answer = await model.ainvoke(
-        f"TASK: {state["task"]}\n"
-        f"{state["prompt"]}\n"
+        f"TASK: {state['task']}\n"
+        f"{state['prompt']}\n"
         f"CONSTRAINTS: {state['constraints']}\n"
         f"ALLOWED_FEATURES: {validation_features}\n"
         f"DATA: {data}\n"
-        f"CONTEXT: {state["context"]}"
+        f"CONTEXT: {state['context']}"
     )
 
-    results = {"results": answer}
-    validation_results = []
-    if "validator" in state:
-        model = state["validator"]["model"]
-        pass_condition = state["validator"]["pass_condition"]
-        if re.match(r"^[<>=!]=?\s*\d+(\.\d+)?$", pass_condition) is None:
-            raise ValueError(f"Invalid pass_condition format: {pass_condition}")
+    state["results"] = answer
+    return state
 
-        samples = answer.get("validation_samples", [])
-        df_val = pd.DataFrame(samples)
 
-        expected = set(validation_features)
-        if set(df_val.columns) != expected:
-            raise ValueError(
-                f"Invalid validation_samples schema.\n"
-                f"Expected: {expected}\n"
-                f"Got: {df_val.columns.tolist()}\n"
-                f"Raw: {samples}"
-            )
+def validation_node(state):
+    if "validator" not in state:
+        return state
 
-        X_val = df_val[validation_features]
-        preds = model.predict(X_val).tolist()
-        for pred in preds:
-            if eval(f"{pred} {pass_condition}"):
-                validation_results.append(True)
-            else:
-                validation_results.append(False)
+    validator = state["validator"]
+    model = validator["model"]
+    pass_condition = validator["pass_condition"]
 
-        passed = sum(validation_results)
-        failed = len(validation_results) - passed
-    
-        results["validation"] = {
-            "passed": passed,
-            "failed": failed
-        }
+    samples = state["results"].get("validation_samples", [])
+    df_val = pd.DataFrame(samples)
 
-    return results
+    features = validator["features"]
+    expected = set(features)
+
+    if set(df_val.columns) != expected:
+        raise ValueError(
+            f"Invalid validation_samples schema.\n"
+            f"Expected: {expected}\n"
+            f"Got: {df_val.columns.tolist()}"
+        )
+
+    X_val = df_val[features]
+    preds = model.predict(X_val).tolist()
+
+    validation_results = [
+        eval(f"{p} {pass_condition}") for p in preds
+    ]
+
+    passed = sum(validation_results)
+    failed = len(validation_results) - passed
+
+    state["validation"] = {
+        "passed": passed,
+        "failed": failed
+    }
+
+    return state
 
 
 def aggregate_node(state: AgentState) -> AgentState:
@@ -145,15 +137,19 @@ def aggregate_node(state: AgentState) -> AgentState:
 def build_agent_network(state) -> StateGraph:
     graph = StateGraph(AgentState)
 
+    graph.add_node("load_validator", load_validator)
     graph.add_node("llm", llm_node)
+    graph.add_node("validate", validation_node)
     graph.add_node("aggregate", aggregate_node)
 
     if "validator" in state:
-        graph.add_node("validator", validator_training_node)
-        graph.set_entry_point("validator")
-        graph.add_edge("validator", "llm")
+        graph.set_entry_point("load_validator")
+        graph.add_edge("load_validator", "llm")
+        graph.add_edge("llm", "validate")
+        graph.add_edge("validate", "aggregate")
     else:
         graph.set_entry_point("llm")
+        graph.add_edge("llm", "aggregate")
 
     graph.set_finish_point("aggregate")
     return graph

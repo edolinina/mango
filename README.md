@@ -4,7 +4,7 @@
 
 Modern large-scale organizations continue to operate with hierarchical structures and management layers that have remained largely unchanged for decades, despite rapid advances in artificial intelligence. While many technology-driven companies have successfully integrated AI tools to support engineers and knowledge workers—primarily to accelerate coding, documentation, and analysis—these capabilities rarely extend into managerial and executive decision-making layers. As a result, strategic planning, coordination, and organizational control still rely heavily on human-centric processes that struggle to scale, adapt, and incorporate the full breadth of available data.
 
-**MANGO** (Managerial Agentic Network for General Orchestration) is a research framework that explores the possibility of AI systems assuming part of the managerial workload. It investigates agentic AI architectures capable of supporting distributed, context-aware, and collaborative managerial decision-making, with the potential to reduce reliance on rigid organizational hierarchies and improve responsiveness in complex, data-rich enterprise environments.
+**MANGO** (Managerial Agentic Network for General Orchestration) is a research framework that explores the possibility of AI systems assuming part of the managerial workload. It investigates if agentic AI architectures capable of supporting distributed, context-aware, and collaborative managerial decision-making, with the potential to reduce reliance on rigid organizational hierarchies and improve responsiveness in complex, data-rich enterprise environments.
 
 ---
 
