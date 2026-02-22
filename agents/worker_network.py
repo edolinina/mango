@@ -3,35 +3,22 @@ import os
 import joblib
 import logging
 import pandas as pd
+import asyncio
+from typing import TypedDict, List, Annotated
+import operator
 
-from typing import TypedDict, List, Any, Optional
-
-from langgraph.graph import StateGraph
-from langgraph.graph.message import add_messages
-
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+from langgraph.graph import StateGraph, START, END
 
 logger = logging.getLogger("mango")
-
-class AgentState(TypedDict):
-    prompt: str
-    task: str
-    constraints: str
-    validator: dict
-    model: Any
-    context: str
-    data_source: str
-    results: dict
-    validation: dict
 
 class Recommendation(TypedDict):
     recommendation: str
     explanation: str
     validation_samples: List[dict]
+
+class AgentState(TypedDict):
+    directives: List[dict]
+    results: Annotated[List[dict], operator.add]
 
 
 # --- Nodes implementations ---
@@ -129,36 +116,58 @@ def validation_node(state):
     return state
 
 
-def aggregate_node(state: AgentState) -> AgentState:
-    return state
+async def run_directive_branch(directive_state: dict) -> dict:
+    """Run llm (+ optional validator) for a single directive and return result."""
+    if "validator" in directive_state:
+        directive_state = load_validator(directive_state)
+    directive_state = await llm_node(directive_state)
+    if "validator" in directive_state:
+        directive_state = validation_node(directive_state)
+
+    return {
+        "cap": directive_state.get("cap"),
+        "directive": directive_state.get("directive"),
+        "_id": directive_state.get("_id"),
+        "results": directive_state.get("results"),
+        "validation": directive_state.get("validation"),
+    }
 
 
-# --- Graph ---
-def build_agent_network(state) -> StateGraph:
+def build_agent_network(directives: list) -> StateGraph:
+    """Build a LangGraph for visualization showing all directive branches."""
     graph = StateGraph(AgentState)
-
-    graph.add_node("load_validator", load_validator)
-    graph.add_node("llm", llm_node)
-    graph.add_node("validate", validation_node)
+    
+    def aggregate_node(state: AgentState) -> AgentState:
+        return state
+    
     graph.add_node("aggregate", aggregate_node)
 
-    if "validator" in state:
-        graph.set_entry_point("load_validator")
-        graph.add_edge("load_validator", "llm")
-        graph.add_edge("llm", "validate")
-        graph.add_edge("validate", "aggregate")
-    else:
-        graph.set_entry_point("llm")
-        graph.add_edge("llm", "aggregate")
+    for i, directive in enumerate(directives):
+        has_validator = "validator" in directive
+        agent_name = directive.get("_agent", f"agent_{i}")
+        cap_name = directive.get("cap", {}).get("name", f"directive_{i}")
+        branch = f"{agent_name}_{cap_name}"
 
-    graph.set_finish_point("aggregate")
+        if has_validator:
+            graph.add_node(f"{branch}_load_validator", lambda s: s)
+            graph.add_node(f"{branch}_llm", lambda s: s)
+            graph.add_node(f"{branch}_validation", lambda s: s)
+            graph.add_edge(START, f"{branch}_load_validator")
+            graph.add_edge(f"{branch}_load_validator", f"{branch}_llm")
+            graph.add_edge(f"{branch}_llm", f"{branch}_validation")
+            graph.add_edge(f"{branch}_validation", "aggregate")
+        else:
+            graph.add_node(f"{branch}_llm", lambda s: s)
+            graph.add_edge(START, f"{branch}_llm")
+            graph.add_edge(f"{branch}_llm", "aggregate")
+
+    graph.add_edge("aggregate", END)
     return graph
 
 
-async def run_agent_network(state: AgentState):
-    """Runs the agent network asynchronously and returns the final state."""
-    graph = build_agent_network(state)
-    app = graph.compile()
-
-    results = await app.ainvoke(state)
-    return results
+async def run_agent_network(directives: list):
+    """Runs all directive branches in parallel using asyncio.gather."""
+    results = await asyncio.gather(
+        *[run_directive_branch(d) for d in directives]
+    )
+    return list(results)

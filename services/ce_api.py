@@ -16,7 +16,7 @@ static_files = StaticFiles(directory="static")
 
 
 # ---------- async workflow ----------
-async def run_workflow_async(ce):
+async def run_workflow_async(ce, directive_id):
     try:
         logger.info("Starting workflow")
 
@@ -24,31 +24,45 @@ async def run_workflow_async(ce):
         await ce.send_directives(ce.directives)
         logger.info("Directives sent")
 
-        # give agents time to start
-        await asyncio.sleep(3)
+        # give agents MORE time to start
+        await asyncio.sleep(10)  # Increased from 5 to 10 seconds
 
-        # trigger agents
-        async with httpx.AsyncClient() as client:
+        # trigger agents with retry logic
+        async with httpx.AsyncClient(timeout=300.0) as client:
             tasks = []
             for agent in ce.agents:
                 url = f"http://{agent.host}:{agent.port}/process-directive"
                 logger.info(f"Triggering agent {agent.name} at {url}")
-                tasks.append(client.post(url))
+                tasks.append(trigger_agent_with_retry(client, url, agent.name, max_retries=5))
 
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
 
         logger.info("All agents triggered")
-
-    except httpx.ReadTimeout:
-        logger.warning("A request to an agent timed out")
 
     except Exception:
         logger.exception("Workflow execution failed")
 
 
+async def trigger_agent_with_retry(client, url, agent_name, max_retries=5):
+    """Trigger agent with retry on connection errors."""
+    for attempt in range(max_retries):
+        try:
+            await client.post(url, json={"directive_id": None})
+            logger.info(f"Successfully connected to {agent_name}")
+            return
+        except httpx.ConnectError:
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt
+                logger.warning(f"Connection to {agent_name} failed, retrying in {wait}s...")
+                await asyncio.sleep(wait)
+            else:
+                logger.error(f"Failed to connect to {agent_name} after {max_retries} attempts")
+                raise
+
+
 # ---------- background wrapper ----------
 def run_workflow_bg(ce):
-    asyncio.run(run_workflow_async(ce))
+    asyncio.run(run_workflow_async(ce, directive_id=None))
 
 
 # ---------- FastAPI app ----------

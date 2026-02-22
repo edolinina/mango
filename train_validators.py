@@ -3,8 +3,7 @@ import yaml
 import joblib
 import pandas as pd
 
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
@@ -37,11 +36,11 @@ def train_validator(agent_name, data_source, validator):
     model_engine = None
     model_type = detect_model_type(y)
     if model_type == "classification":
-        model_engine = RandomForestClassifier
+        model_engine = LogisticRegression
     else:
-        model_engine = RandomForestRegressor
+        model_engine = LinearRegression
 
-    model = model_engine(n_estimators=100, random_state=42, n_jobs=-1)
+    model = model_engine()
     model.fit(X, y)
 
     # Create folder per agent
