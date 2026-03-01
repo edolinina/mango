@@ -23,3 +23,7 @@ langchain_huggingface
 sentence-transformers
 unstructured[md]
 faiss-cpu
+
+# --- Visualization ---
+matplotlib
+seaborn

@@ -23,8 +23,8 @@ common:
         }
 
 judge:
-  provider: ollama
-  model: "gpt-oss:20b"
+  provider: openai
+  model: "gpt-5-mini"
   prompt: |
     You are evaluating a managerial AI recommendation.
 

@@ -1,19 +1,26 @@
 import json
 import asyncio
-import traceback
 import yaml
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+import os
+os.chdir(str(ROOT))
+
+from dotenv import load_dotenv
 load_dotenv()
 
 # Override paths and hosts for local execution
 os.environ["MCP_HOST"] = "localhost"
+# Disabling parallelism to avoid deadlocks with tokenizers in multi-threaded environments
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Use absolute path to models directory
-os.environ["TRAINED_MODELS_PATH"] = str(Path(__file__).parent / "models")
+os.environ["TRAINED_MODELS_PATH"] = str(Path(__file__).parent / "../models")
 
 from agents.central_executive import CentralExecutive
 from agents.worker_agent import WorkerAgent
@@ -25,7 +32,15 @@ logger = setup_logger()
 # List of evaluation tasks
 EVALUATION_TASKS = [
     "Reduce operational costs by 10% without impacting delivery timelines",
-    "Improve infrastructure efficiency while maintaining SLA compliance",
+    "Improve product margins while maintaining current customer acquisition levels",
+    "Decrease delivery risk below critical threshold without increasing HR spend",
+    "Optimize infrastructure capacity to handle peak traffic without exceeding budget limits",
+    "Improve SLA compliance to full coverage while keeping infrastructure costs stable",
+    "Increase workforce efficiency without lowering performance grades",
+    "Reduce HR expenses by 5% without negatively affecting delivery outcomes",
+    "Increase product profitability while keeping delivery risk under control",
+    "Balance revenue growth with controlled operational expenditure",
+    "Enhance cross-functional performance across Business, IT, and HR while staying within existing resource constraints",
 ]
 
 
