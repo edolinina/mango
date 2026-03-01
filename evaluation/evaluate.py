@@ -6,6 +6,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
+import argparse
+from filelock import FileLock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -31,11 +33,11 @@ logger = setup_logger()
 
 # List of evaluation tasks
 EVALUATION_TASKS = [
-    "Reduce operational costs by 10% without impacting delivery timelines",
-    "Improve product margins while maintaining current customer acquisition levels",
-    "Decrease delivery risk below critical threshold without increasing HR spend",
-    "Optimize infrastructure capacity to handle peak traffic without exceeding budget limits",
-    "Improve SLA compliance to full coverage while keeping infrastructure costs stable",
+   # "Reduce operational costs by 10% without impacting delivery timelines",
+   # "Improve product margins while maintaining current customer acquisition levels",
+   # "Decrease delivery risk below critical threshold without increasing HR spend",
+   # "Optimize infrastructure capacity to handle peak traffic without exceeding budget limits",
+   # "Improve SLA compliance to full coverage while keeping infrastructure costs stable",
     "Increase workforce efficiency without lowering performance grades",
     "Reduce HR expenses by 5% without negatively affecting delivery outcomes",
     "Increase product profitability while keeping delivery risk under control",
@@ -149,11 +151,27 @@ class MangoEvaluator:
         
         return task_result
 
-    async def run_evaluation(self, tasks=None):
+    async def run_evaluation(self, tasks=None, output_filename: str = "results.yaml"):
         """Run evaluation on all tasks and save results."""
         if tasks is None:
             tasks = EVALUATION_TASKS
-        
+
+        # prepare output file (one shared file across runs) so we can append tasks incrementally
+        output_dir = Path("evaluation/results")
+        output_dir.mkdir(exist_ok=True)
+        output_file = output_dir / output_filename
+
+        # Create the file only if it doesn't exist (do not reinitialize/overwrite)
+        if not output_file.exists():
+            initial_doc = {
+                "evaluation_run": {
+                    "created": datetime.now().isoformat(),
+                    "results": []
+                }
+            }
+            with open(output_file, "w") as f:
+                yaml.dump(initial_doc, f, default_flow_style=False, sort_keys=False)
+
         all_results = {
             "evaluation_run": {
                 "timestamp": datetime.now().isoformat(),
@@ -161,31 +179,33 @@ class MangoEvaluator:
                 "results": []
             }
         }
-        
+
         for i, task in enumerate(tasks, 1):
             logger.info(f"\n\n{'#'*80}\nTask {i}/{len(tasks)}\n{'#'*80}")
-            # Don't catch exceptions - let them stop execution
             task_result = await self.evaluate_task(task)
             all_results["evaluation_run"]["results"].append(task_result)
-        
-        # Save results to YAML file
-        output_dir = Path("evaluation_results")
-        output_dir.mkdir(exist_ok=True)
-        
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = output_dir / f"evaluation_{timestamp}.yaml"
-        
-        with open(output_file, "w") as f:
-            yaml.dump(all_results, f, default_flow_style=False, sort_keys=False)
-        
+
+            # append by reading file, updating evaluation_run.results and writing back under FileLock
+            lock = FileLock(f"{output_file}.lock")
+            with lock:
+                with open(output_file, "r") as rf:
+                    data = yaml.safe_load(rf) or {}
+
+                # ensure structure and append task_result
+                data["results"].append(task_result)
+
+                # write updated content back to file
+                with open(output_file, "w") as f:
+                    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
         logger.info(f"\n{'='*80}\nEvaluation complete! Results saved to: {output_file}\n{'='*80}")
-        
+
         return all_results
 
 
-async def main():
+async def main(output_filename: str = "results.yaml"):
     evaluator = MangoEvaluator()
-    results = await evaluator.run_evaluation()
+    results = await evaluator.run_evaluation(output_filename=output_filename)
     
     # Print summary
     total_tasks = len(results["evaluation_run"]["results"])
@@ -200,4 +220,12 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="Run evaluation and append results")
+    parser.add_argument(
+        "--out",
+        "-o",
+        default="results.yaml",
+        help="Output YAML filename inside evaluation/results/ to append to (default: results.yaml)"
+    )
+    args = parser.parse_args()
+    asyncio.run(main(output_filename=args.out))
