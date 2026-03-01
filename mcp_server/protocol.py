@@ -19,6 +19,7 @@ class Directive(BaseModel):
 class AgentOutput(BaseModel):
     agent: str
     capability: str
+    validation: str = ""
     results: str
-    validation: str
-    task_id: str
+    task_id: str = ""
+    llm_judge: str = ""

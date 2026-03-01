@@ -9,6 +9,8 @@ import operator
 
 from langgraph.graph import StateGraph, START, END
 
+from utils.helpers import load_model, LLM_PROVIDER, LLM_MODEL, EVALUATION_MODE
+
 logger = logging.getLogger("mango")
 
 class Recommendation(TypedDict):
@@ -19,6 +21,14 @@ class Recommendation(TypedDict):
 class AgentState(TypedDict):
     directives: List[dict]
     results: Annotated[List[dict], operator.add]
+
+class JudgeOutput(TypedDict):
+    strategic_alignment: int
+    logical_coherence: int
+    constraint_awareness: int
+    clarity_actionability: int
+    overall_score: float
+    explanation: str
 
 
 # --- Nodes implementations ---
@@ -107,22 +117,78 @@ def validation_node(state):
 
     passed = sum(validation_results)
     failed = len(validation_results) - passed
+    total = passed + failed
+    pass_rate = (passed / total * 100) if total > 0 else 0
+    
+    if pass_rate == 100:
+        status = "success"
+    elif pass_rate >= 70:
+        status = "partial_pass"
+    else:
+        status = "fail"
 
     state["validation"] = {
         "passed": passed,
-        "failed": failed
+        "failed": failed,
+        "total": total,
+        "pass_rate": round(pass_rate, 2),
+        "status": status
     }
 
     return state
 
+async def judge_node(state, judge_config):
+    """Evaluate agent output using LLM judge."""
+    judge_provider = judge_config.get("provider", LLM_PROVIDER)
+    judge_model_name =  judge_config.get("model", LLM_MODEL)
+    judge_model = load_model(judge_provider, judge_model_name)
+    judge_model = judge_model.with_structured_output(JudgeOutput)
+
+    answer = state["results"]
+    prompt_template = judge_config.get("prompt", "")
+    
+    # Read first 10 rows for context
+    data_sample = ""
+    if state.get("data_source"):
+        df = pd.read_csv(state["data_source"])
+        data_sample = df.head(10).to_string()
+    
+    judge_prompt = prompt_template.format(
+        task=state.get("task", ""),
+        constraints=state.get("constraints", ""),
+        data_sample=data_sample,
+        recommendation=answer.get("recommendation", ""),
+        explanation=answer.get("explanation", "")
+    )
+
+    judgment = await judge_model.ainvoke(judge_prompt)
+
+    # Compute aggregated reasoning score
+    scores = [
+        judgment["strategic_alignment"],
+        judgment["logical_coherence"],
+        judgment["constraint_awareness"],
+        judgment["clarity_actionability"],
+    ]
+
+    judgment["overall_score"] = sum(scores) / len(scores)
+    state["llm_judge"] = judgment
+    return state
+
 
 async def run_directive_branch(directive_state: dict) -> dict:
-    """Run llm (+ optional validator) for a single directive and return result."""
+    """Run llm (+ optional validator + optional judge) for a single directive and return result."""
     if "validator" in directive_state:
         directive_state = load_validator(directive_state)
+    
     directive_state = await llm_node(directive_state)
+    
     if "validator" in directive_state:
         directive_state = validation_node(directive_state)
+    
+    # Apply judge if evaluation mode is enabled
+    if EVALUATION_MODE and "judge_config" in directive_state:
+        directive_state = await judge_node(directive_state, directive_state["judge_config"])
 
     return {
         "cap": directive_state.get("cap"),
@@ -130,6 +196,7 @@ async def run_directive_branch(directive_state: dict) -> dict:
         "_id": directive_state.get("_id"),
         "results": directive_state.get("results"),
         "validation": directive_state.get("validation"),
+        "llm_judge": directive_state.get("llm_judge"),
     }
 
 
@@ -144,11 +211,22 @@ def build_agent_network(directives: list) -> StateGraph:
 
     for i, directive in enumerate(directives):
         has_validator = "validator" in directive
+        has_judge = EVALUATION_MODE and "judge_config" in directive
         agent_name = directive.get("_agent", f"agent_{i}")
         cap_name = directive.get("cap", {}).get("name", f"directive_{i}")
         branch = f"{agent_name}_{cap_name}"
 
-        if has_validator:
+        if has_validator and has_judge:
+            graph.add_node(f"{branch}_load_validator", lambda s: s)
+            graph.add_node(f"{branch}_llm", lambda s: s)
+            graph.add_node(f"{branch}_validation", lambda s: s)
+            graph.add_node(f"{branch}_judge", lambda s: s)
+            graph.add_edge(START, f"{branch}_load_validator")
+            graph.add_edge(f"{branch}_load_validator", f"{branch}_llm")
+            graph.add_edge(f"{branch}_llm", f"{branch}_validation")
+            graph.add_edge(f"{branch}_validation", f"{branch}_judge")
+            graph.add_edge(f"{branch}_judge", "aggregate")
+        elif has_validator:
             graph.add_node(f"{branch}_load_validator", lambda s: s)
             graph.add_node(f"{branch}_llm", lambda s: s)
             graph.add_node(f"{branch}_validation", lambda s: s)
@@ -156,6 +234,12 @@ def build_agent_network(directives: list) -> StateGraph:
             graph.add_edge(f"{branch}_load_validator", f"{branch}_llm")
             graph.add_edge(f"{branch}_llm", f"{branch}_validation")
             graph.add_edge(f"{branch}_validation", "aggregate")
+        elif has_judge:
+            graph.add_node(f"{branch}_llm", lambda s: s)
+            graph.add_node(f"{branch}_judge", lambda s: s)
+            graph.add_edge(START, f"{branch}_llm")
+            graph.add_edge(f"{branch}_llm", f"{branch}_judge")
+            graph.add_edge(f"{branch}_judge", "aggregate")
         else:
             graph.add_node(f"{branch}_llm", lambda s: s)
             graph.add_edge(START, f"{branch}_llm")

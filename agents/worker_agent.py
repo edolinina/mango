@@ -5,10 +5,11 @@ import asyncio
 
 from mcp_server.protocol import AgentOutput
 from agents.worker_network import run_agent_network
-from utils.helpers import get_mcp_endpoint
+from utils.helpers import get_mcp_endpoint, EVALUATION_MODE, load_config
 
 logger = logging.getLogger("mango")
 TRAINED_MODELS_PATH = os.getenv("TRAINED_MODELS_PATH", "models")
+
 
 class WorkerAgent:
     def __init__(self, config, model, mcp_client, knowledge_retriever, manager_name="CentralExecutive"):
@@ -27,6 +28,12 @@ class WorkerAgent:
             self.data_headers = next(f).strip()
 
         self.knowledge_retriever = knowledge_retriever
+
+        # Load judge config if evaluation mode enabled
+        self.judge_config = None
+        if EVALUATION_MODE:
+            agents_config = load_config("agents.yaml")
+            self.judge_config = agents_config.get("judge", {})
 
     def get_context(self, task):
         query = f"Provide context for decision making on this task: {task}"
@@ -95,9 +102,16 @@ class WorkerAgent:
                         continue
                     validator_config = validator_config[0]
                     input_state["validator"] = validator_config
-                    input_state["validator"]["model_path"] = os.path.join(
-                        TRAINED_MODELS_PATH, self.name, f"{validator_config['name']}.pkl"
+                    validator_model_path = os.path.join(
+                        TRAINED_MODELS_PATH,
+                        self.name,
+                        f"{validator_config['name']}.pkl"
                     )
+                    input_state["validator"]["model_path"] = validator_model_path
+
+                # Add judge config if evaluation mode enabled
+                if EVALUATION_MODE and self.judge_config:
+                    input_state["judge_config"] = self.judge_config
 
                 input_states.append(input_state)
 
@@ -114,27 +128,28 @@ class WorkerAgent:
             directive = result_state.get("directive")
             _id = result_state.get("_id")
             results = json.dumps(result_state.get("results"))
-            validation = result_state.get("validation", {})
+            ml_validation = result_state.get("validation", {})
+            llm_judge = result_state.get("llm_judge", {})
 
-            validation_results = ""
-            if validation:
-                passed = validation.get("passed", 0)
-                failed = validation.get("failed", 0)
-                pass_rate = passed / (passed + failed)
-                if pass_rate == 1.0:
-                    validation_results = "✅ success"
-                elif pass_rate >= 0.7:
-                    validation_results = f"🟡 partial pass ({passed} passed, {failed} failed)"
-                else:
-                    validation_results = f"❌ fail ({passed} passed, {failed} failed)"
+            # Build comprehensive validation dict
+            validation_dict = {
+                "ml_validator": ml_validation if ml_validation else None,
+                "llm_judge": llm_judge if llm_judge else None,
+                "human_expert": {
+                    "feasibility": None,
+                    "usefulness": None
+                }
+            }
 
             result = AgentOutput(
                 agent=self.name,
                 capability=f"{cap['name']} {cap['avatar']}",
-                validation=validation_results,
+                validation=json.dumps(validation_dict),
                 results=results,
-                task_id=directive.get("task_id", "")
+                task_id=directive.get("task_id", ""),
+                llm_judge=""  # Keep for backwards compatibility but empty
             )
+            
             response.append(result)
 
             mcp_endpoint = await get_mcp_endpoint(self.client, "send_feedback")

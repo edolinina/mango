@@ -15,6 +15,10 @@ MOCK_DIRECTIVES = [
             "features": ["traffic", "capacity"],
             "pass_condition": "<= MEAN"
         },
+        "judge_config": {
+            "model": "gpt-5-mini",
+            "prompt": "Judge prompt..."
+        },
         "cap": {"name": "cost_analysis", "avatar": "📊"},
         "directive": {"task_id": "mock-001"},
         "_id": "mock-001",
@@ -33,6 +37,10 @@ MOCK_DIRECTIVES = [
             "target": "sla_met",
             "features": ["traffic", "capacity"],
             "pass_condition": ">= 1"
+        },
+        "judge_config": {
+            "model": "gpt-5-mini",
+            "prompt": "Judge prompt..."
         },
         "cap": {"name": "sla_check", "avatar": "✅"},
         "directive": {"task_id": "mock-002"},

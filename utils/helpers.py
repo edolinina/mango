@@ -8,7 +8,9 @@ from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 CONFIG_PATH = "config"
-
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-oss:20b")
+EVALUATION_MODE = os.getenv("EVALUATION_MODE", "false").lower() == "true"
 
 class color:
     BOLD = '\033[1m'
@@ -35,14 +37,13 @@ def load_config(config_file) -> dict:
         print(f"Unexpected error loading spec from '{config_path}'")
         raise
 
-def load_model():
-    provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+def load_model(provider=LLM_PROVIDER, model=LLM_MODEL):
     temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 
     if provider == "ollama":
         return ChatOllama(
             base_url=os.getenv("OLLAMA_URL", "http://localhost:11434"),
-            model=os.getenv("LLM_MODEL", "gpt-oss:20b"),
+            model=model,
             temperature=temperature,
         )
 
@@ -55,7 +56,7 @@ def load_model():
 
         return ChatOpenAI(
             api_key=api_key,
-            model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            model=model,
             temperature=temperature,
         )
 
