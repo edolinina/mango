@@ -33,11 +33,11 @@ logger = setup_logger()
 
 # List of evaluation tasks
 EVALUATION_TASKS = [
-   # "Reduce operational costs by 10% without impacting delivery timelines",
-   # "Improve product margins while maintaining current customer acquisition levels",
-   # "Decrease delivery risk below critical threshold without increasing HR spend",
-   # "Optimize infrastructure capacity to handle peak traffic without exceeding budget limits",
-   # "Improve SLA compliance to full coverage while keeping infrastructure costs stable",
+    "Reduce operational costs by 10% without impacting delivery timelines",
+    "Improve product margins while maintaining current customer acquisition levels",
+    "Decrease delivery risk below critical threshold without increasing HR spend",
+    "Optimize infrastructure capacity to handle peak traffic without exceeding budget limits",
+    "Improve SLA compliance to full coverage while keeping infrastructure costs stable",
     "Increase workforce efficiency without lowering performance grades",
     "Reduce HR expenses by 5% without negatively affecting delivery outcomes",
     "Increase product profitability while keeping delivery risk under control",
@@ -191,12 +191,12 @@ class MangoEvaluator:
                 with open(output_file, "r") as rf:
                     data = yaml.safe_load(rf) or {}
 
-                # ensure structure and append task_result
-                data["results"].append(task_result)
+                # ensure expected structure and append
+                data.setdefault("evaluation_run", {}).setdefault("results", []).append(task_result)
 
                 # write updated content back to file
-                with open(output_file, "w") as f:
-                    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+                with open(output_file, "w") as wf:
+                    yaml.dump(data, wf, default_flow_style=False, sort_keys=False)
 
         logger.info(f"\n{'='*80}\nEvaluation complete! Results saved to: {output_file}\n{'='*80}")
 
