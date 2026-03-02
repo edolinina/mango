@@ -144,19 +144,116 @@ def create_visualizations(df):
     plt.show()
 
 
+def create_comparison_visualization(dfs: dict):
+    """Compare scores across two models with multiple plots."""
+    sns.set_style("whitegrid")
+    sns.set_context("paper", font_scale=0.8)
+
+    methods = ['ml_validator', 'llm_judge', 'human_expert']
+    labels = ['ML Validator', 'LLM Judge', 'Human Expert']
+    model_names = list(dfs.keys())
+    colors = ['#3498db', '#e74c3c']
+    width = 0.35
+
+    # 1) Overall Average Scores side by side
+    fig, ax = plt.subplots(figsize=(9, 4))
+    x = range(len(methods))
+    for i, (model_name, df) in enumerate(dfs.items()):
+        means = [df[m].mean() for m in methods]
+        offset = [xi + (i - 0.5) * width for xi in x]
+        bars = ax.bar(offset, means, width=width, label=model_name, color=colors[i], alpha=0.85)
+        for bar, val in zip(bars, means):
+            ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.15,
+                    f'{val:.2f}', ha='center', va='bottom', fontsize=8)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_ylim(0, 10)
+    ax.set_ylabel('Average Score (1-10)', fontsize=9)
+    ax.set_title(f'Overall Average Scores: {" vs ".join(model_names)}', fontsize=10)
+    ax.legend(fontsize=8)
+    ax.tick_params(axis='y', labelsize=8)
+    plt.tight_layout()
+    plt.show()
+
+    # 2) Per-agent comparison (llm_judge only)
+    fig, axes = plt.subplots(1, len(methods), figsize=(14, 4), sharey=True)
+    for ax, method, label in zip(axes, methods, labels):
+        agent_means = {
+            name: df.groupby('agent')[method].mean()
+            for name, df in dfs.items()
+        }
+        agents = sorted(set().union(*[m.index for m in agent_means.values()]))
+        x = range(len(agents))
+        for i, (model_name, means) in enumerate(agent_means.items()):
+            vals = [means.get(a, 0) for a in agents]
+            offset = [xi + (i - 0.5) * width for xi in x]
+            ax.bar(offset, vals, width=width, label=model_name, color=colors[i], alpha=0.85)
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(agents, rotation=15, ha='right', fontsize=8)
+        ax.set_ylim(0, 10)
+        ax.set_title(label, fontsize=9)
+        ax.tick_params(axis='y', labelsize=8)
+        if ax == axes[0]:
+            ax.set_ylabel('Average Score (1-10)', fontsize=9)
+        ax.legend(fontsize=7)
+    fig.suptitle(f'Scores by Agent: {" vs ".join(model_names)}', fontsize=10)
+    plt.tight_layout()
+    plt.show()
+
+    # 3) Per-task comparison (llm_judge)
+    all_tasks = []
+    for df in dfs.values():
+        all_tasks.extend(df['task'].unique().tolist())
+    tasks = list(dict.fromkeys(all_tasks))  # preserve order, deduplicate
+    task_labels = [f"Task #{i}" for i in range(1, len(tasks) + 1)]
+
+    fig, ax = plt.subplots(figsize=(12, 4))
+    x = range(len(tasks))
+    for i, (model_name, df) in enumerate(dfs.items()):
+        task_means = df.groupby('task')['llm_judge'].mean()
+        vals = [task_means.get(t, 0) for t in tasks]
+        offset = [xi + (i - 0.5) * width for xi in x]
+        ax.bar(offset, vals, width=width, label=model_name, color=colors[i], alpha=0.85)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(task_labels, rotation=45, ha='right', fontsize=8)
+    ax.set_ylim(0, 10)
+    ax.set_ylabel('LLM Judge Score (1-10)', fontsize=9)
+    ax.set_title(f'LLM Judge Score by Task: {" vs ".join(model_names)}', fontsize=10)
+    ax.legend(fontsize=8)
+    ax.tick_params(axis='y', labelsize=8)
+    plt.tight_layout()
+    plt.show()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Analyze evaluation results')
-    parser.add_argument('yaml_file', help='Path to evaluation YAML file')
+    parser.add_argument('yaml_files', nargs='+', help='Path to one or two evaluation YAML files')
     args = parser.parse_args()
-    
-    # Parse results
-    df = parse_evaluation_results(args.yaml_file)
-    
-    # Print summary
-    print_summary_statistics(df)
-    
-    # Create and show visualizations (no files written)
-    create_visualizations(df)
+
+    if len(args.yaml_files) == 1:
+        # single file — existing behaviour
+        df = parse_evaluation_results(args.yaml_files[0])
+        print_summary_statistics(df)
+        create_visualizations(df)
+
+    elif len(args.yaml_files) == 2:
+        # two files — comparison mode
+        dfs = {}
+        for path in args.yaml_files:
+            name = Path(path).stem          # e.g. "ollama" or "openai"
+            dfs[name] = parse_evaluation_results(path)
+
+        # print summary for each
+        for name, df in dfs.items():
+            print(f"\n{'='*80}\nModel: {name.upper()}")
+            print_summary_statistics(df)
+
+        # comparison plot
+        create_comparison_visualization(dfs)
+
+    else:
+        parser.error("Provide one or two YAML files.")
+
 
 if __name__ == "__main__":
     main()
