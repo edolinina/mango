@@ -36,7 +36,6 @@ class CentralExecutive:
                 a.name: {
                     "capabilities": [cap["name"] for cap in a.config["capabilities"]],
                     "role": a.config["role"], 
-                    "data": a.data_headers
                 }
                 for a in self.agents
             }

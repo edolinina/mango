@@ -2,6 +2,7 @@
 numpy
 pandas
 scikit-learn
+kagglehub
 
 # --- FastAPI & server ---
 fastapi

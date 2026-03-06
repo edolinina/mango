@@ -33,17 +33,17 @@ logger = setup_logger()
 
 # List of evaluation tasks
 EVALUATION_TASKS = [
-    "Reduce operational costs by 10% without impacting delivery timelines",
-    "Improve product margins while maintaining current customer acquisition levels",
-    "Decrease delivery risk below critical threshold without increasing HR spend",
-    "Optimize infrastructure capacity to handle peak traffic without exceeding budget limits",
-    "Improve SLA compliance to full coverage while keeping infrastructure costs stable",
-    "Increase workforce efficiency without lowering performance grades",
-    "Reduce HR expenses by 5% without negatively affecting delivery outcomes",
-    "Increase product profitability while keeping delivery risk under control",
-    "Balance revenue growth with controlled operational expenditure",
-    "Enhance cross-functional performance across Business, IT, and HR while staying within existing resource constraints",
-]
+    "Reduce procurement and inventory costs while maintaining stable profit margins",
+    "Improve overall product profitability without increasing inventory imbalance",
+    "Lower employee attrition risk while sustaining workforce performance levels",
+    "Increase sales profitability while keeping procurement-to-sales balance stable",
+    "Improve inventory turnover without negatively affecting gross profit",
+    "Increase workforce productivity while maintaining low attrition risk",
+    "Enhance pricing strategies while ensuring procurement spending remains efficient",
+    "Increase vendor profitability while maintaining stable supply chain efficiency",
+    "Improve workforce performance without increasing attrition risk or operational imbalance",
+    "Achieve balanced improvement across business profitability, supply chain efficiency, and workforce stability",
+   ]
 
 
 class MangoEvaluator:

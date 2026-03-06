@@ -2,50 +2,50 @@ from agents.worker_network import build_agent_network
 
 MOCK_DIRECTIVES = [
     {
-        "task": "Analyze cost efficiency",
-        "capability": "cost_analysis",
-        "prompt": "Analyze the data and provide recommendations.",
-        "constraints": "infra_cost <= MEAN",
-        "context": "Mock context for visualization.",
+        "task": "Analyze profit margins",
+        "capability": "profit_margin",
+        "prompt": "Analyze vendor profit margins and provide recommendations.",
+        "constraints": "ProfitMargin >= MEAN",
+        "context": "Mock context for business strategy analysis.",
         "data_source": None,
         "model": None,
         "validator": {
-            "name": "cost_validator",
-            "target": "infra_cost",
-            "features": ["traffic", "capacity"],
-            "pass_condition": "<= MEAN"
+            "name": "profit_margin",
+            "target": "ProfitMargin",
+            "features": ["TotalPurchaseDollars", "TotalSalesDollars", "TotalExciseTax", "FreightCost", "GrossProfit"],
+            "pass_condition": ">= MEAN"
         },
         "judge_config": {
-            "model": "gpt-5-mini",
-            "prompt": "Judge prompt..."
+            "model": "gpt-4o-mini",
+            "prompt": "Judge profit margin analysis..."
         },
-        "cap": {"name": "cost_analysis", "avatar": "📊"},
+        "cap": {"name": "profit_margin", "avatar": "💰"},
         "directive": {"task_id": "mock-001"},
         "_id": "mock-001",
-        "_agent": "ITAgent",
+        "_agent": "BusinessAgent",
     },
     {
-        "task": "Validate SLA compliance",
-        "capability": "sla_check",
-        "prompt": "Check SLA metrics and report.",
-        "constraints": "sla_met >= 1",
-        "context": "Mock context for visualization.",
+        "task": "Validate gross profit",
+        "capability": "gross_profit",
+        "prompt": "Check gross profit metrics and report findings.",
+        "constraints": "GrossProfit >= PERCENTILE_70",
+        "context": "Mock context for business validation.",
         "data_source": None,
         "model": None,
         "validator": {
-            "name": "sla_validator",
-            "target": "sla_met",
-            "features": ["traffic", "capacity"],
-            "pass_condition": ">= 1"
+            "name": "gross_profit",
+            "target": "GrossProfit",
+            "features": ["TotalPurchaseDollars", "TotalSalesDollars", "TotalExciseTax", "FreightCost"],
+            "pass_condition": ">= PERCENTILE_70"
         },
         "judge_config": {
-            "model": "gpt-5-mini",
-            "prompt": "Judge prompt..."
+            "model": "gpt-4o-mini",
+            "prompt": "Judge gross profit validation..."
         },
-        "cap": {"name": "sla_check", "avatar": "✅"},
+        "cap": {"name": "gross_profit", "avatar": "📈"},
         "directive": {"task_id": "mock-002"},
         "_id": "mock-002",
-        "_agent": "ITAgent",
+        "_agent": "BusinessAgent",
     },
 ]
 

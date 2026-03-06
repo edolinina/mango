@@ -50,8 +50,8 @@ judge:
     CONSTRAINTS:
     {constraints}
 
-    DATA SAMPLE EXAMPLE:
-    {data_sample}
+    DATA SUMMARY:
+    {data_summary}
 
     RECOMMENDATION:
     {recommendation}
@@ -82,67 +82,131 @@ agents:
       {agents}
   
   - name: BusinessAgent
-    role: business_performance
+    role: business_strategy
     avatar: 👨‍💼
     host: business-agent
     port-env: BUSINESS_AGENT_PORT
-    data_source: data_sources/business.csv
+    data_source:
+      download_from: harshmadhavan/vendor-performance-analysis
+      data_file: vendor_sales_summary.csv
+      target_file: data_sources/business.csv
+
     capabilities:
-      - name: cost_optimization
-        avatar: 💰📉
-        validator: product_margin
-      - name: delivery_risk_monitoring
-        avatar: 🚚⚠️
-        validator: delivery_risk
+      - name: pricing_optimization
+        avatar: 💰📊
+        validator: profit_margin
+
+      - name: profitability_growth
+        avatar: 📈
+        validator: gross_profit
 
     validators:
-      - name: product_margin
-        target: product_margin
-        features: [revenue, operational_cost, hr_spend, active_customers, month, delivery_risk]
+      - name: profit_margin
+        target: ProfitMargin
+        features: [
+          "PurchasePrice", 
+          "ActualPrice", 
+          "Volume", 
+          "TotalSalesQuantity", 
+          "TotalSalesDollars"
+        ]
         pass_condition: ">=MEAN"
-      - name: delivery_risk
-        target: delivery_risk
-        features: [revenue, operational_cost, hr_spend, active_customers, product_margin]
-        pass_condition: "<2"
 
-  - name: ITAgent
-    role: infrastructure_management
-    avatar: 🧑‍💻
-    host: it-agent
-    port-env: IT_AGENT_PORT
-    data_source: data_sources/it.csv
+      - name: gross_profit
+        target: GrossProfit
+        features: [
+          "PurchasePrice", 
+          "ActualPrice", 
+          "TotalSalesQuantity", 
+          "TotalSalesDollars"
+        ]
+        pass_condition: ">=MEAN"
+
+
+  - name: SupplyAgent
+    role: supply_chain_optimization
+    avatar: 🚚
+    host: supply-agent
+    port-env: SUPPLY_AGENT_PORT
+    data_source:
+      download_from: harshmadhavan/vendor-performance-analysis
+      data_file: vendor_sales_summary.csv
+      target_file: data_sources/supply_chain.csv
+
     capabilities:
-      - name: cost_optimization
-        avatar: 💰🖥️
-        validator: infra_cost
-      - name: sla_risk_assessment
-        avatar: 📊✅
-        validator: sla_met
+      - name: inventory_efficiency
+        avatar: 📦
+        validator: stock_turnover
+
+      - name: procurement_balance
+        avatar: ⚖️
+        validator: sales_purchase_ratio
 
     validators:
-      - name: infra_cost
-        target: infra_cost
-        features: [traffic, capacity, sla_met]
-        pass_condition: "<MEAN"
-      - name: sla_met
-        target: sla_met
-        features: [traffic, capacity, infra_cost]
-        pass_condition: "==1"
+      - name: stock_turnover
+        target: StockTurnover
+        features: [
+          "TotalPurchaseQuantity", 
+          "TotalPurchaseDollars", 
+          "FreightCost", 
+          "TotalExciseTax"
+        ]
+        pass_condition: ">=MEAN"
+
+      - name: sales_purchase_ratio
+        target: SalestoPurchaseRatio
+        features: [
+          "TotalPurchaseQuantity", 
+          "TotalPurchaseDollars", 
+          "TotalSalesQuantity", 
+          "TotalSalesDollars"
+        ]
+        pass_condition: ">=MEAN"
 
   - name: HRAgent
     role: human_resources
     avatar: 👩‍💼
     host: hr-agent
     port-env: HR_AGENT_PORT
-    data_source: data_sources/hr.csv
+    data_source:
+      download_from: stealthtechnologies/employee-attrition-dataset
+      data_file: train.csv
+      target_file: data_sources/hr.csv
+
     capabilities:
-      - name: workforce_efficiency
-        avatar: ⚡
-        validator: performance_grade
+      - name: attrition_risk_management
+        avatar: ⚠️👥
+        validator: attrition_risk
+
+      - name: workforce_performance
+        avatar: 📊⚡
+        validator: performance_rating
 
     validators:
-      - name: performance_grade
-        target: performance_grade
-        features: [role_level, contribution_rate, delivery_impact]
-        pass_condition: ">=3"
+      - name: attrition_risk
+        target: Attrition
+        features: [
+          "Age",
+          "Years at Company",
+          "Monthly Income",
+          "Work-Life Balance",
+          "Job Satisfaction",
+          "Overtime",
+          "Distance from Home",
+          "Number of Promotions",
+          "Job Level"
+        ]
+        pass_condition: "==0"
 
+      - name: performance_rating
+        target: "Performance Rating"
+        features: [
+          "Years at Company",
+          "Job Level",
+          "Job Satisfaction",
+          "Leadership Opportunities",
+          "Innovation Opportunities",
+          "Employee Recognition",
+          "Work-Life Balance"
+        ]
+        pass_condition: ">=MEAN"

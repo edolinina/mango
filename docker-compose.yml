@@ -68,25 +68,25 @@ services:
         limits:
           memory: 1.5g
 
-  it-agent:
+  supply-agent:
     image: mango-agent
     depends_on:
       - mango-build-agent
     <<: *common-env
     environment:
       SERVICE_MODE: agent
-      AGENT_NAME: ITAgent
-      SERVICE_PORT: ${IT_AGENT_PORT}
+      AGENT_NAME: SupplyAgent
+      SERVICE_PORT: ${SUPPLY_AGENT_PORT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "${SUPPLY_AGENT_PORT}:${SUPPLY_AGENT_PORT}"
     volumes:
       - ./models:${TRAINED_MODELS_PATH}
-    ports:
-      - "${IT_AGENT_PORT}:${IT_AGENT_PORT}"
     deploy:
       resources:
         limits:
           memory: 1.5g
-
+  
   hr-agent:
     image: mango-agent
     depends_on:

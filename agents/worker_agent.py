@@ -24,9 +24,6 @@ class WorkerAgent:
         port_env = config.get("port-env")
         self.port = os.getenv(port_env, "8000")
         self.data_source = self.config.get("data_source")
-        with open(self.data_source, 'r') as f:
-            self.data_headers = next(f).strip()
-
         self.knowledge_retriever = knowledge_retriever
 
         # Load judge config if evaluation mode enabled
@@ -80,6 +77,19 @@ class WorkerAgent:
                 constraints = "\n".join([f"{v['target']} {v['pass_condition']}"
                     for v in self.config.get("validators", [])])
 
+                # Load summary stats for this capability
+                summary_path = os.path.join("models", "summary", f"{self.name}_{cap['name']}_stats.json")
+                summary_stats = None
+                if os.path.exists(summary_path):
+                    try:
+                        with open(summary_path, 'r') as f:
+                            summary_stats = json.load(f)
+                        logger.info(f"Loaded summary stats from {summary_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to load summary stats from {summary_path}: {e}")
+                else:
+                    logger.warning(f"Summary stats file not found: {summary_path}")
+
                 logger.info(f"Agent {self.print_name} found directive for {capability}: {task}")
                 context = self.get_context(task)
                 input_state = {
@@ -87,9 +97,8 @@ class WorkerAgent:
                     "task": task,
                     "context": context,
                     "model": self.model,
-                    "data_source": self.data_source,
+                    "data_summary": summary_stats,
                     "constraints": constraints,
-                    # carry metadata for result aggregation
                     "cap": cap,
                     "directive": directive,
                     "_id": _id,

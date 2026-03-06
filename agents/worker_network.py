@@ -1,4 +1,4 @@
-import re
+import json
 import os
 import joblib
 import logging
@@ -33,26 +33,35 @@ class JudgeOutput(TypedDict):
 
 # --- Nodes implementations ---
 def load_validator(state):
-    data_source = state["data_source"]
+    data_summary = state["data_summary"]
     validator = state["validator"]
     target = validator["target"]
     features = validator["features"]
     pass_condition = validator["pass_condition"]
 
-    df = pd.read_csv(data_source)
-    df.columns = df.columns.str.strip()
-
-    missing = set(features + [target]) - set(df.columns)
+    if not data_summary:
+        raise ValueError("No data summary available for validation")
+    
+    available_columns = list(data_summary.keys())
+    missing = set(features + [target]) - set(available_columns)
     if missing:
         raise ValueError(
-            f"Schema mismatch in {data_source}. "
-            f"Missing: {missing}, Available: {df.columns.tolist()}"
+            f"Schema mismatch in data summary. "
+            f"Missing: {missing}, Available: {available_columns}"
         )
 
-    mean_y = df[target].mean()
-    min_y = df[target].min()
-    max_y = df[target].max()
-
+    # Get statistics from summary for target variable
+    target_stats = data_summary.get(target, {})
+    mean_y = target_stats.get('mean', 0)
+    min_y = target_stats.get('min', 0)
+    max_y = target_stats.get('max', 0)
+    
+    # Replace placeholders in pass condition
+    for percentile in ['PERCENTILE_95', 'PERCENTILE_90', 'PERCENTILE_80', 'PERCENTILE_75', 'PERCENTILE_70', 'PERCENTILE_50', 'PERCENTILE_25']:
+        percentile_key = percentile.lower()
+        if percentile_key in target_stats:
+            pass_condition = pass_condition.replace(percentile, str(target_stats[percentile_key]))
+    
     pass_condition = pass_condition.replace("MEAN", str(mean_y))
     pass_condition = pass_condition.replace("MIN", str(min_y))
     pass_condition = pass_condition.replace("MAX", str(max_y))
@@ -69,12 +78,17 @@ def load_validator(state):
 async def llm_node(state):
     model = state["model"].with_structured_output(Recommendation)
 
-    with open(state["data_source"], "r") as f:
-        data = f.read()
+    data_summary = state["data_summary"]
+    if isinstance(data_summary, str):
+        # If it's a file path, read it
+        with open(data_summary, "r") as f:
+            data = f.read()
+    else:
+        # If it's already the data object, convert to JSON string
+        data = json.dumps(data_summary, indent=2)
 
     validation_features = state.get("validator", {}).get("features", [])
-
-    answer = await model.ainvoke(
+    prompt = (
         f"TASK: {state['task']}\n"
         f"{state['prompt']}\n"
         f"CONSTRAINTS: {state['constraints']}\n"
@@ -82,6 +96,8 @@ async def llm_node(state):
         f"DATA: {data}\n"
         f"CONTEXT: {state['context']}"
     )
+    
+    answer = await model.ainvoke(prompt)
 
     state["results"] = answer
     return state
@@ -147,16 +163,17 @@ async def judge_node(state, judge_config):
     answer = state["results"]
     prompt_template = judge_config.get("prompt", "")
     
-    # Read first 10 rows for context
-    data_sample = ""
-    if state.get("data_source"):
-        df = pd.read_csv(state["data_source"])
-        data_sample = df.head(10).to_string()
+    data_summary = state.get("data_summary")
+    if isinstance(data_summary, str) and os.path.exists(data_summary):
+        with open(data_summary, 'r') as f:
+            summary_stats = json.load(f)
+    else:
+        summary_stats = data_summary or "No summary available"
     
     judge_prompt = prompt_template.format(
         task=state.get("task", ""),
         constraints=state.get("constraints", ""),
-        data_sample=data_sample,
+        data_summary=summary_stats,
         recommendation=answer.get("recommendation", ""),
         explanation=answer.get("explanation", "")
     )
