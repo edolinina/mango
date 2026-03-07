@@ -12,7 +12,7 @@ common:
         DO NOT INCLUDE any other features into this dataset except the ones stated in 'ALLOWED_FEATURES'.
         The validation samples should represent the simulated values AFTER applying your recommendation.
         Each validation sample MUST be a flat JSON object with numeric values only.
-        
+
         Return the output as VALID JSON with the following schema:
         {
           "recommendation": "...",
@@ -86,6 +86,7 @@ agents:
     avatar: 👨‍💼
     host: business-agent
     port-env: BUSINESS_AGENT_PORT
+
     data_source:
       download_from: harshmadhavan/vendor-performance-analysis
       data_file: vendor_sales_summary.csv
@@ -102,25 +103,23 @@ agents:
 
     validators:
       - name: profit_margin
-        target: ProfitMargin
-        features: [
-          "PurchasePrice", 
-          "ActualPrice", 
-          "Volume", 
-          "TotalSalesQuantity", 
-          "TotalSalesDollars"
-        ]
-        pass_condition: ">=MEAN"
+        task: regression
+        target: TotalSalesDollars
+        features:
+          - PurchasePrice
+          - ActualPrice
+          - TotalSalesQuantity
+        pass_condition: ">= MEAN"
 
       - name: gross_profit
+        task: regression
         target: GrossProfit
-        features: [
-          "PurchasePrice", 
-          "ActualPrice", 
-          "TotalSalesQuantity", 
-          "TotalSalesDollars"
-        ]
-        pass_condition: ">=MEAN"
+        features:
+          - PurchasePrice
+          - ActualPrice
+          - TotalPurchaseQuantity
+          - TotalSalesQuantity
+        pass_condition: ">= MEAN"
 
 
   - name: SupplyAgent
@@ -128,85 +127,53 @@ agents:
     avatar: 🚚
     host: supply-agent
     port-env: SUPPLY_AGENT_PORT
+
     data_source:
       download_from: harshmadhavan/vendor-performance-analysis
       data_file: vendor_sales_summary.csv
       target_file: data_sources/supply_chain.csv
 
     capabilities:
-      - name: inventory_efficiency
-        avatar: 📦
-        validator: stock_turnover
-
-      - name: procurement_balance
-        avatar: ⚖️
-        validator: sales_purchase_ratio
+      - name: demand_planning
+        avatar: 📦📈
+        validator: sales_prediction
 
     validators:
-      - name: stock_turnover
-        target: StockTurnover
-        features: [
-          "TotalPurchaseQuantity", 
-          "TotalPurchaseDollars", 
-          "FreightCost", 
-          "TotalExciseTax"
-        ]
-        pass_condition: ">=MEAN"
+      - name: sales_prediction
+        task: regression
+        target: TotalSalesQuantity
+        features:
+          - PurchasePrice
+          - ActualPrice
+          - TotalPurchaseQuantity
+        pass_condition: ">= MEAN"
 
-      - name: sales_purchase_ratio
-        target: SalestoPurchaseRatio
-        features: [
-          "TotalPurchaseQuantity", 
-          "TotalPurchaseDollars", 
-          "TotalSalesQuantity", 
-          "TotalSalesDollars"
-        ]
-        pass_condition: ">=MEAN"
 
   - name: HRAgent
     role: human_resources
     avatar: 👩‍💼
     host: hr-agent
     port-env: HR_AGENT_PORT
+
     data_source:
       download_from: stealthtechnologies/employee-attrition-dataset
       data_file: train.csv
       target_file: data_sources/hr.csv
 
     capabilities:
-      - name: attrition_risk_management
-        avatar: ⚠️👥
-        validator: attrition_risk
-
       - name: workforce_performance
         avatar: 📊⚡
         validator: performance_rating
 
     validators:
-      - name: attrition_risk
-        target: Attrition
-        features: [
-          "Age",
-          "Years at Company",
-          "Monthly Income",
-          "Work-Life Balance",
-          "Job Satisfaction",
-          "Overtime",
-          "Distance from Home",
-          "Number of Promotions",
-          "Job Level"
-        ]
-        pass_condition: "==0"
-
       - name: performance_rating
-        target: "Performance Rating"
-        features: [
-          "Years at Company",
-          "Job Level",
-          "Job Satisfaction",
-          "Leadership Opportunities",
-          "Innovation Opportunities",
-          "Employee Recognition",
-          "Work-Life Balance"
-        ]
-        pass_condition: ">=MEAN"
+        task: classification
+        target: Performance Rating
+        features:
+          - Job Satisfaction
+          - Work-Life Balance
+          - Employee Recognition
+          - Job Level
+          - Leadership Opportunities
+          - Innovation Opportunities
+        pass_condition: ">= 2"

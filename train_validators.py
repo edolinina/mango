@@ -1,152 +1,167 @@
 import os
-import yaml
-import joblib
-import pandas as pd
-import shutil
-import kagglehub
 import json
+import shutil
+from pathlib import Path
+
+import joblib
+import kagglehub
+import numpy as np
+import pandas as pd
+import yaml
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
 SUMMARY_DIR = "models/summary"
 
 
+def find_file_recursively(root_dir: str, filename: str) -> str | None:
+    """Find a file by name anywhere under root_dir."""
+    root = Path(root_dir)
+    matches = list(root.rglob(filename))
+    if matches:
+        return str(matches[0])
+    return None
+
+
+def list_dataset_files(root_dir: str) -> list[str]:
+    """Return relative file paths under a dataset directory for debugging."""
+    root = Path(root_dir)
+    files = []
+    for p in root.rglob("*"):
+        if p.is_file():
+            try:
+                files.append(str(p.relative_to(root)))
+            except Exception:
+                files.append(str(p))
+    return sorted(files)
+
+
 def download_dataset_if_needed(data_source_config):
-    """Download dataset from Kaggle if it doesn't exist locally."""
-    target_path = data_source_config.get("target_file")
-    
+    """
+    Download dataset from Kaggle if needed and copy the configured data_file
+    into the configured target_file.
+    """
+    target_path = data_source_config["target_file"]
+    data_file = data_source_config["data_file"]
+    kaggle_id = data_source_config["download_from"]
+
     if os.path.exists(target_path):
-        print(f"Dataset already exists at {target_path}")
         return target_path
-    
-    # Download from Kaggle
-    kaggle_id = data_source_config['download_from']
-    data_file = data_source_config['data_file']
-    
-    print(f"Downloading dataset: {kaggle_id}")
+
     downloaded_path = kagglehub.dataset_download(kaggle_id)
-    
-    # Find the specific data file in downloaded directory
+
+    # Try exact path first
     source_file = os.path.join(downloaded_path, data_file)
-    
+
+    # If exact path not found, search recursively by filename
     if not os.path.exists(source_file):
-        raise FileNotFoundError(f"Data file {data_file} not found in {downloaded_path}")
-    
-    # Copy to target location
+        source_file = find_file_recursively(downloaded_path, data_file)
+
+    if not source_file or not os.path.exists(source_file):
+        available_files = list_dataset_files(downloaded_path)
+        raise FileNotFoundError(
+            f"Configured data_file '{data_file}' was not found in downloaded dataset '{kaggle_id}'.\n"
+            f"Downloaded to: {downloaded_path}\n"
+            f"Available files:\n- " + "\n- ".join(available_files[:100])
+        )
+
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
     shutil.copy2(source_file, target_path)
-    
-    print(f"✓ Dataset saved to {target_path}")
+
+    print(f"Copied dataset file from '{source_file}' to '{target_path}'")
     return target_path
 
 
 def preprocess_data(X, y):
-    """Preprocess features: drop nulls, encode categoricals, and scale."""
+    """Minimal preprocessing for simple demo validators."""
     df = pd.concat([X, y], axis=1)
-    
-    # Drop nulls and infinities
-    df = df.replace([float('inf'), float('-inf')], pd.NA).dropna()
-    
-    # Reset index after dropping rows
-    df = df.reset_index(drop=True)
-    
-    y_clean = df[y.name]
-    X_clean = df.drop(columns=[y.name])
-    
-    # Encode categorical target
-    target_encoder = None
-    if y_clean.dtype == 'object' or pd.api.types.is_string_dtype(y_clean):
-        target_encoder = LabelEncoder()
-        y_clean = pd.Series(target_encoder.fit_transform(y_clean.astype(str)), name=y.name)
-    
-    # Encode categorical features - handle ALL non-numeric columns
+
+    print(f"Rows before cleaning: {len(df)}")
+    df = df.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+    print(f"Rows after cleaning: {len(df)}")
+
+    y_clean = df[y.name].copy()
+    X_clean = df.drop(columns=[y.name]).copy()
+
     encoders = {}
+
+    # Encode categorical features
     for col in X_clean.columns:
-        if X_clean[col].dtype == 'object' or pd.api.types.is_string_dtype(X_clean[col]) or not pd.api.types.is_numeric_dtype(X_clean[col]):
-            encoders[col] = LabelEncoder()
-            X_clean[col] = encoders[col].fit_transform(X_clean[col].astype(str))
-        
-        # Ensure column is numeric after encoding
-        X_clean[col] = pd.to_numeric(X_clean[col], errors='coerce')
-    
-    # Drop any remaining NaN values created by failed numeric conversion
-    combined_again = pd.concat([X_clean, y_clean], axis=1).dropna()
-    y_clean = combined_again[y.name]
-    X_clean = combined_again.drop(columns=[y.name])
-    
-    # Scale features
+        if not pd.api.types.is_numeric_dtype(X_clean[col]):
+            le = LabelEncoder()
+            X_clean[col] = le.fit_transform(X_clean[col].astype(str))
+            encoders[col] = le
+
+        X_clean[col] = pd.to_numeric(X_clean[col], errors="coerce")
+
+    # Encode categorical target if needed
+    target_encoder = None
+    if not pd.api.types.is_numeric_dtype(y_clean):
+        target_encoder = LabelEncoder()
+        y_clean = pd.Series(
+            target_encoder.fit_transform(y_clean.astype(str)),
+            name=y.name
+        )
+    else:
+        y_clean = pd.to_numeric(y_clean, errors="coerce")
+
+    # Final cleanup after conversions
+    combined = pd.concat([X_clean, y_clean], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
+    X_clean = combined.drop(columns=[y.name]).copy()
+    y_clean = combined[y.name].copy()
+
+    # Convert to float and clip extreme values to avoid training issues
+    X_clean = X_clean.astype(np.float64)
+    X_clean = X_clean.clip(-1e12, 1e12)
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X_clean)
-    X_scaled = pd.DataFrame(X_scaled, columns=X_clean.columns)
-    
-    print(f"Scaled {X_scaled.shape[1]} features using StandardScaler")
-    
+
     return X_scaled, y_clean, scaler, encoders, target_encoder
 
 
-def detect_model_type(y):
-    if y.dtype.kind in {"i", "b"} and y.nunique() <= 10:
-        return "classification"
-    return "regression"
+def generate_summary_stats(df, agent_name, capability_name, validator):
+    """Generate simple summary stats for LLM prompt grounding."""
+    cols = validator["features"] + [validator["target"]]
+    df_subset = df[cols].copy()
 
+    for col in df_subset.columns:
+        if not pd.api.types.is_numeric_dtype(df_subset[col]):
+            df_subset[col] = LabelEncoder().fit_transform(df_subset[col].astype(str))
+        df_subset[col] = pd.to_numeric(df_subset[col], errors="coerce")
 
-def generate_summary_stats(df_full, agent_name, capability_name, validator):
-    """Generate summary statistics for validation-relevant columns only."""
-    target = validator["target"]
-    features = validator["features"]
-    relevant_columns = features + [target]
-    
-    # Only use columns relevant to this validator
-    df_relevant = df_full[relevant_columns].copy()
-    
-    # Encode categorical columns for stats generation
-    df_numeric = df_relevant.copy()
-    for col in df_numeric.columns:
-        if df_numeric[col].dtype == 'object' or pd.api.types.is_string_dtype(df_numeric[col]):
-            le = LabelEncoder()
-            # Convert to string first to handle mixed types
-            df_numeric[col] = df_numeric[col].astype(str)
-            df_numeric[col] = le.fit_transform(df_numeric[col])
-        
-        # Ensure all columns are numeric
-        df_numeric[col] = pd.to_numeric(df_numeric[col], errors='coerce')
-    
-    # Replace infinities with NaN before stats calculation
-    df_numeric = df_numeric.replace([float('inf'), float('-inf')], pd.NA)
-    
     summary = {}
-    
-    for col in df_numeric.columns:
-        # Drop NaN for statistics calculation
-        col_clean = df_numeric[col].dropna()
-        
-        if len(col_clean) > 0 and pd.api.types.is_numeric_dtype(col_clean):
-            summary[col] = {
-                'mean': float(col_clean.mean()),
-                'min': float(col_clean.min()),
-                'max': float(col_clean.max()),
-                'percentile_70': float(col_clean.quantile(0.70)),
-                'percentile_80': float(col_clean.quantile(0.80)),
-                'percentile_90': float(col_clean.quantile(0.90))
-            }
-        else:
-            summary[col] = {
-                'error': 'No valid numeric data'
-            }
-    
-    # Save summary statistics
+    for col in df_subset.columns:
+        c = df_subset[col].dropna()
+        if len(c) == 0:
+            continue
+
+        summary[col] = {
+            "mean": float(c.mean()),
+            "min": float(c.min()),
+            "max": float(c.max()),
+            "p70": float(c.quantile(0.70)),
+            "p80": float(c.quantile(0.80)),
+            "p90": float(c.quantile(0.90)),
+        }
+
     os.makedirs(SUMMARY_DIR, exist_ok=True)
-    summary_path = os.path.join(SUMMARY_DIR, f"{agent_name}_{capability_name}_stats.json")
-    
-    with open(summary_path, 'w') as f:
+    path = os.path.join(SUMMARY_DIR, f"{agent_name}_{capability_name}_stats.json")
+
+    with open(path, "w") as f:
         json.dump(summary, f, indent=2)
-    
-    print(f"Saved summary stats → {summary_path}")
-    
+
     return summary
+
+
+def create_model(task: str):
+    """Use only the simplest models."""
+    if task == "classification":
+        return LogisticRegression(max_iter=1000)
+    return LinearRegression()
 
 
 def train_validator(agent_name, data_source, validator, capability_name):
@@ -154,114 +169,110 @@ def train_validator(agent_name, data_source, validator, capability_name):
 
     df = pd.read_csv(data_source)
     df.columns = df.columns.str.strip()
-    
+
     target = validator["target"]
     features = validator["features"]
+    task = validator.get("task", "regression")
 
-    missing = set(features + [target]) - set(df.columns)
-    if missing:
-        raise ValueError(
-            f"Missing columns for {agent_name}/{validator['name']}: {missing}"
-        )
-
-    # Generate summary statistics BEFORE encoding (to preserve original data types)
     generate_summary_stats(df, agent_name, capability_name, validator)
+    print(f"Saved summary stats → {SUMMARY_DIR}/{agent_name}_{capability_name}_stats.json")
 
-    # Extract features and target for model training
     X = df[features].copy()
     y = df[target].copy()
 
-    # Preprocess: encode categoricals, drop nulls and scale
+    print(f"Original shape: X={X.shape} y={y.shape}")
+    print(f"Target dtype: {y.dtype}")
+    print(f"Sample target values: {y.head().tolist()}")
+
     X_processed, y_processed, scaler, encoders, target_encoder = preprocess_data(X, y)
 
-    model_engine = None
-    model_type = detect_model_type(y_processed)
-    if model_type == "classification":
-        model_engine = LogisticRegression
-    else:
-        model_engine = LinearRegression
+    print(f"Processed shape: X={X_processed.shape} y={y_processed.shape}")
 
-    model = model_engine()
+    model = create_model(task)
+    print(f"Using model: {model.__class__.__name__}")
+
     model.fit(X_processed, y_processed)
+    preds = model.predict(X_processed)
+    preds = np.maximum(preds, 0)
 
-    # Create folder per agent
-    agent_model_dir = os.path.join(MODELS_DIR, agent_name)
-    os.makedirs(agent_model_dir, exist_ok=True)
+    if task == "classification":
+        score = accuracy_score(y_processed, preds)
+        metric_name = "Accuracy"
 
-    model_path = os.path.join(
-        agent_model_dir,
-        f"{validator['name']}.pkl"
-    )
-    
-    scaler_path = os.path.join(
-        agent_model_dir,
-        f"{validator['name']}_scaler.pkl"
-    )
-    
-    encoders_path = os.path.join(
-        agent_model_dir,
-        f"{validator['name']}_encoders.pkl"
-    )
-    
-    target_encoder_path = os.path.join(
-        agent_model_dir,
-        f"{validator['name']}_target_encoder.pkl"
-    )
+        # threshold slightly above random baseline
+        passed = score >= 0.55
+    else:
+        score = r2_score(y_processed, preds)
+        metric_name = "R²"
+        passed = score >= 0.20
+
+    print(f"{metric_name}: {score:.3f}")
+    print("Validator result:", "PASS" if passed else "FAIL")
+
+    sample_pred = model.predict(X_processed[:5])
+    sample_true = y_processed.iloc[:5].tolist() if hasattr(y_processed, "iloc") else y_processed[:5].tolist()
+
+    print("Sample predictions:", sample_pred)
+    print("Actual values:", sample_true)
+
+    agent_dir = os.path.join(MODELS_DIR, agent_name)
+    os.makedirs(agent_dir, exist_ok=True)
+
+    model_path = os.path.join(agent_dir, f"{validator['name']}.pkl")
+    scaler_path = os.path.join(agent_dir, f"{validator['name']}_scaler.pkl")
+    encoders_path = os.path.join(agent_dir, f"{validator['name']}_encoders.pkl")
+    meta_path = os.path.join(agent_dir, f"{validator['name']}_meta.pkl")
 
     joblib.dump(model, model_path)
     joblib.dump(scaler, scaler_path)
     joblib.dump(encoders, encoders_path)
+    joblib.dump(
+        {
+            "task": task,
+            "passed": passed,
+            "threshold": 0.55 if task == "classification" else 0.10,
+        },
+        meta_path,
+    )
+
     if target_encoder:
+        target_encoder_path = os.path.join(agent_dir, f"{validator['name']}_target_encoder.pkl")
         joblib.dump(target_encoder, target_encoder_path)
+        print(f"Saved target encoder → {target_encoder_path}")
 
     print(f"Saved model → {model_path}")
     print(f"Saved scaler → {scaler_path}")
     print(f"Saved encoders → {encoders_path}")
-    if target_encoder:
-        print(f"Saved target encoder → {target_encoder_path}")
+    print(f"Saved meta → {meta_path}")
 
 
 def main():
     with open(CONFIG_PATH, "r") as f:
         config = yaml.safe_load(f)
 
-    agents = config.get("agents", [])
-
-    for agent in agents:
+    for agent in config.get("agents", []):
         agent_name = agent["name"]
         data_source_config = agent.get("data_source")
 
         if not data_source_config:
-            print(f"No data source for {agent_name}, skipping.")
             continue
-        
-        # Download dataset if needed
+
         if isinstance(data_source_config, dict):
             data_source = download_dataset_if_needed(data_source_config)
         else:
-            # Legacy: direct path
             data_source = data_source_config
-    
-        validators = agent.get("validators", [])
-        if not validators:
-            print(f"No validators for {agent_name}")
-            continue
 
-        for validator in validators:
-            # Find the capability that uses this validator
-            capability_name = None
-            for capability in agent.get("capabilities", []):
-                if capability.get("validator") == validator["name"]:
-                    capability_name = capability["name"]
-                    break
-            
-            if not capability_name:
-                print(f"No capability found for validator {validator['name']}")
-                continue
-                
+        for validator in agent.get("validators", []):
+            capability_name = next(
+                (
+                    cap["name"]
+                    for cap in agent.get("capabilities", [])
+                    if cap.get("validator") == validator["name"]
+                ),
+                validator["name"],
+            )
+
             train_validator(agent_name, data_source, validator, capability_name)
-
-    print("\nAll validators trained successfully.")
 
 
 if __name__ == "__main__":
