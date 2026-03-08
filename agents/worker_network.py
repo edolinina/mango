@@ -154,6 +154,7 @@ def validation_node(state):
         X_val = scaler.transform(X_val)
 
     preds = model.predict(X_val).tolist()
+    logger.info(f"Validation predictions: {preds}")
 
     validation_results = [
         eval(f"{p} {pass_condition}") for p in preds

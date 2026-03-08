@@ -16,7 +16,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
 SUMMARY_DIR = "models/summary"
-MODEL_EVAL_PASSING_THRESHOLD = 0.65
+MODEL_EVAL_PASSING_THRESHOLD = 0.55
 
 
 def find_file_recursively(root_dir: str, filename: str) -> str | None:

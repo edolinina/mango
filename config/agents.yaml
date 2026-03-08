@@ -84,7 +84,7 @@ agents:
 
   - name: BusinessAgent
     role: business_strategy
-    avatar: 👨‍💼
+    avatar: 👨🏻‍💼
     host: business-agent
     port-env: BUSINESS_AGENT_PORT
 
@@ -130,7 +130,7 @@ agents:
 
   - name: CustomerServiceAgent
     role: customer_service
-    avatar: 👨
+    avatar: 🙋🏻‍♂️
     host: customers-agent
     port-env: CUSTOMERS_AGENT_PORT
 
@@ -149,7 +149,7 @@ agents:
       - name: satisfaction_prediction
         task: classification
         target: satisfaction_score
-        threshold: 7
+        threshold: 5
         features:
           - complaint_count
           - support_tickets
