@@ -69,8 +69,18 @@ def load_validator(state):
     model_path = validator.get("model_path")
     if not os.path.exists(model_path):
         raise ValueError(f"Pretrained model not found: {model_path}")
-
+    
     state["validator"]["model"] = joblib.load(model_path)
+
+    scaler_path = model_path.replace(".pkl", "_scaler.pkl")
+    encoders_path = model_path.replace(".pkl", "_encoders.pkl")
+
+    if os.path.exists(scaler_path):
+        state["validator"]["scaler"] = joblib.load(scaler_path)
+
+    if os.path.exists(encoders_path):
+        state["validator"]["encoders"] = joblib.load(encoders_path)
+
     state["validator"]["pass_condition"] = pass_condition
     return state
 
@@ -124,7 +134,25 @@ def validation_node(state):
             f"Got: {df_val.columns.tolist()}"
         )
 
-    X_val = df_val[features]
+    X_val = df_val[features].copy()
+    encoders = validator.get("encoders", {})
+    scaler = validator.get("scaler")
+
+    # Apply label encoders
+    for col, le in encoders.items():
+        if col in X_val.columns:
+            X_val[col] = le.transform(X_val[col].astype(str))
+
+    # Ensure numeric
+    for col in X_val.columns:
+        X_val[col] = pd.to_numeric(X_val[col], errors="coerce")
+
+    X_val = X_val.fillna(0)
+
+    # Apply scaler
+    if scaler:
+        X_val = scaler.transform(X_val)
+
     preds = model.predict(X_val).tolist()
 
     validation_results = [

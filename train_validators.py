@@ -16,6 +16,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
 SUMMARY_DIR = "models/summary"
+MODEL_EVAL_PASSING_THRESHOLD = 0.65
 
 
 def find_file_recursively(root_dir: str, filename: str) -> str | None:
@@ -40,56 +41,111 @@ def list_dataset_files(root_dir: str) -> list[str]:
     return sorted(files)
 
 
-def download_dataset_if_needed(data_source_config):
+def download_dataset(data_source_config):
     """
-    Download dataset from Kaggle if needed and copy the configured data_file
-    into the configured target_file.
+    Download dataset from Kaggle.
+    Supports automatic Excel -> CSV conversion when sheet_name is provided.
     """
+
     target_path = data_source_config["target_file"]
     data_file = data_source_config["data_file"]
     kaggle_id = data_source_config["download_from"]
-
-    if os.path.exists(target_path):
-        return target_path
+    sheet_name = data_source_config.get("sheet_name")
 
     downloaded_path = kagglehub.dataset_download(kaggle_id)
 
-    # Try exact path first
     source_file = os.path.join(downloaded_path, data_file)
 
-    # If exact path not found, search recursively by filename
     if not os.path.exists(source_file):
         source_file = find_file_recursively(downloaded_path, data_file)
 
     if not source_file or not os.path.exists(source_file):
         available_files = list_dataset_files(downloaded_path)
         raise FileNotFoundError(
-            f"Configured data_file '{data_file}' was not found in downloaded dataset '{kaggle_id}'.\n"
+            f"Configured data_file '{data_file}' not found in dataset '{kaggle_id}'.\n"
             f"Downloaded to: {downloaded_path}\n"
             f"Available files:\n- " + "\n- ".join(available_files[:100])
         )
 
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
-    shutil.copy2(source_file, target_path)
 
-    print(f"Copied dataset file from '{source_file}' to '{target_path}'")
+    # Load dataframe
+    if source_file.endswith((".xlsx", ".xls")):
+
+        if not sheet_name:
+            raise ValueError(
+                f"Excel file detected but no sheet_name provided in config: {data_file}"
+            )
+
+        df = pd.read_excel(source_file, sheet_name=sheet_name)
+
+    else:
+
+        df = pd.read_csv(source_file, dtype=str)
+
+    # Detect duplicated header rows and keep last dataset
+    header_col = df.columns[0]
+
+    duplicate_header_rows = df[df[header_col] == header_col].index
+
+    if len(duplicate_header_rows) > 0:
+        split_index = duplicate_header_rows[-1] + 1
+        df = df.iloc[split_index:].reset_index(drop=True)
+
+    # restore correct column names
+    df.columns = df.columns.str.strip()
+
+    df.to_csv(target_path, index=False)
+
+    print(f"Saved cleaned dataset -> {target_path}")
+
     return target_path
 
 
-def preprocess_data(X, y):
-    """Minimal preprocessing for simple demo validators."""
+def preprocess_data(task, X, y, classifier_threshold=None):
+    """
+    Clean dataset, encode categorical features, and prepare target
+    for regression or classification.
+    """
     df = pd.concat([X, y], axis=1)
 
-    print(f"Rows before cleaning: {len(df)}")
-    df = df.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
-    print(f"Rows after cleaning: {len(df)}")
+    print(f"Rows before cleaning: {df.shape[0]}")
+
+    # Remove invalid values
+    df = df.replace([np.inf, -np.inf], pd.NA).dropna().reset_index(drop=True)
+
+    print(f"Rows after cleaning: {df.shape[0]}")
 
     y_clean = df[y.name].copy()
     X_clean = df.drop(columns=[y.name]).copy()
 
     encoders = {}
+    target_encoder = None
 
-    # Encode categorical features
+    # Target processing based on task type
+    if task == "classification":
+        # categorical target like PerformanceRating
+        if not pd.api.types.is_numeric_dtype(y_clean):
+            target_encoder = LabelEncoder()
+            y_clean = pd.Series(
+                target_encoder.fit_transform(y_clean.astype(str)),
+                name=y.name
+            )
+            print("Encoded categorical target with LabelEncoder")
+
+        # continuous numeric target used as classification -> convert to binary
+        elif y_clean.nunique() > 10:
+            threshold = classifier_threshold if classifier_threshold is not None else y_clean.mean()
+            y_clean = (y_clean >= threshold).astype(int)
+            print(
+                f"Converted target to binary classes using mean threshold: {threshold}"
+            )
+
+    else:
+        # regression target
+        y_clean = pd.to_numeric(y_clean, errors="coerce")
+
+    # Encode categorical features and ensure all are numeric
     for col in X_clean.columns:
         if not pd.api.types.is_numeric_dtype(X_clean[col]):
             le = LabelEncoder()
@@ -98,27 +154,21 @@ def preprocess_data(X, y):
 
         X_clean[col] = pd.to_numeric(X_clean[col], errors="coerce")
 
-    # Encode categorical target if needed
-    target_encoder = None
-    if not pd.api.types.is_numeric_dtype(y_clean):
-        target_encoder = LabelEncoder()
-        y_clean = pd.Series(
-            target_encoder.fit_transform(y_clean.astype(str)),
-            name=y.name
-        )
-    else:
-        y_clean = pd.to_numeric(y_clean, errors="coerce")
+    # Final cleanup after encoding
+    combined = pd.concat([X_clean, y_clean], axis=1).dropna().reset_index(drop=True)
 
-    # Final cleanup after conversions
-    combined = pd.concat([X_clean, y_clean], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
-    X_clean = combined.drop(columns=[y.name]).copy()
-    y_clean = combined[y.name].copy()
+    y_clean = combined[y.name]
+    X_clean = combined.drop(columns=[y.name])
 
-    # Convert to float and clip extreme values to avoid training issues
-    X_clean = X_clean.astype(np.float64)
-    X_clean = X_clean.clip(-1e12, 1e12)
+    # Scale features
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_clean)
+    X_scaled = pd.DataFrame(
+        scaler.fit_transform(X_clean),
+        columns=X_clean.columns,
+        index=X_clean.index
+    )
+
+    print(f"Processed shape: X={X_scaled.shape} y={y_clean.shape}")
 
     return X_scaled, y_clean, scaler, encoders, target_encoder
 
@@ -173,6 +223,7 @@ def train_validator(agent_name, data_source, validator, capability_name):
     target = validator["target"]
     features = validator["features"]
     task = validator.get("task", "regression")
+    classifier_threshold = validator.get("threshold")
 
     generate_summary_stats(df, agent_name, capability_name, validator)
     print(f"Saved summary stats → {SUMMARY_DIR}/{agent_name}_{capability_name}_stats.json")
@@ -184,7 +235,8 @@ def train_validator(agent_name, data_source, validator, capability_name):
     print(f"Target dtype: {y.dtype}")
     print(f"Sample target values: {y.head().tolist()}")
 
-    X_processed, y_processed, scaler, encoders, target_encoder = preprocess_data(X, y)
+    X_processed, y_processed, scaler, encoders, target_encoder = \
+        preprocess_data(task, X, y, classifier_threshold)
 
     print(f"Processed shape: X={X_processed.shape} y={y_processed.shape}")
 
@@ -193,19 +245,16 @@ def train_validator(agent_name, data_source, validator, capability_name):
 
     model.fit(X_processed, y_processed)
     preds = model.predict(X_processed)
-    preds = np.maximum(preds, 0)
 
     if task == "classification":
         score = accuracy_score(y_processed, preds)
         metric_name = "Accuracy"
-
-        # threshold slightly above random baseline
-        passed = score >= 0.55
     else:
+        preds = np.maximum(preds, 0)
         score = r2_score(y_processed, preds)
         metric_name = "R²"
-        passed = score >= 0.20
-
+    
+    passed = score >= MODEL_EVAL_PASSING_THRESHOLD
     print(f"{metric_name}: {score:.3f}")
     print("Validator result:", "PASS" if passed else "FAIL")
 
@@ -221,19 +270,10 @@ def train_validator(agent_name, data_source, validator, capability_name):
     model_path = os.path.join(agent_dir, f"{validator['name']}.pkl")
     scaler_path = os.path.join(agent_dir, f"{validator['name']}_scaler.pkl")
     encoders_path = os.path.join(agent_dir, f"{validator['name']}_encoders.pkl")
-    meta_path = os.path.join(agent_dir, f"{validator['name']}_meta.pkl")
 
     joblib.dump(model, model_path)
     joblib.dump(scaler, scaler_path)
     joblib.dump(encoders, encoders_path)
-    joblib.dump(
-        {
-            "task": task,
-            "passed": passed,
-            "threshold": 0.55 if task == "classification" else 0.10,
-        },
-        meta_path,
-    )
 
     if target_encoder:
         target_encoder_path = os.path.join(agent_dir, f"{validator['name']}_target_encoder.pkl")
@@ -243,7 +283,6 @@ def train_validator(agent_name, data_source, validator, capability_name):
     print(f"Saved model → {model_path}")
     print(f"Saved scaler → {scaler_path}")
     print(f"Saved encoders → {encoders_path}")
-    print(f"Saved meta → {meta_path}")
 
 
 def main():
@@ -258,7 +297,7 @@ def main():
             continue
 
         if isinstance(data_source_config, dict):
-            data_source = download_dataset_if_needed(data_source_config)
+            data_source = download_dataset(data_source_config)
         else:
             data_source = data_source_config
 

@@ -80,7 +80,8 @@ agents:
       
       Available agents with capabilities, roles and data scopes:
       {agents}
-  
+
+
   - name: BusinessAgent
     role: business_strategy
     avatar: 👨‍💼
@@ -88,65 +89,77 @@ agents:
     port-env: BUSINESS_AGENT_PORT
 
     data_source:
-      download_from: harshmadhavan/vendor-performance-analysis
-      data_file: vendor_sales_summary.csv
+      download_from: shwetasingh1705/ibm-financial-data-2009-2023
+      data_file: income_statement_IBM.csv
       target_file: data_sources/business.csv
 
     capabilities:
-      - name: pricing_optimization
-        avatar: 💰📊
-        validator: profit_margin
+      - name: profitability_optimization
+        avatar: 📊
+        validator: profit_prediction
 
-      - name: profitability_growth
-        avatar: 📈
-        validator: gross_profit
+      - name: cost_optimization
+        avatar: 💰
+        validator: cost_prediction
 
     validators:
-      - name: profit_margin
+      - name: profit_prediction
         task: regression
-        target: TotalSalesDollars
+        target: netIncome
         features:
-          - PurchasePrice
-          - ActualPrice
-          - TotalSalesQuantity
+          - totalRevenue
+          - grossProfit
+          - operatingIncome
+          - incomeBeforeTax
+          - interestExpense
+          - incomeTaxExpense
         pass_condition: ">= MEAN"
 
-      - name: gross_profit
+      - name: cost_prediction
         task: regression
-        target: GrossProfit
+        target: operatingExpenses
         features:
-          - PurchasePrice
-          - ActualPrice
-          - TotalPurchaseQuantity
-          - TotalSalesQuantity
-        pass_condition: ">= MEAN"
+          - grossProfit
+          - operatingIncome
+          - costOfRevenue
+          - researchAndDevelopment
+          - sellingGeneralAndAdministrative
+          - depreciation
+        pass_condition: "<= MEAN"
 
 
-  - name: SupplyAgent
-    role: supply_chain_optimization
-    avatar: 🚚
-    host: supply-agent
-    port-env: SUPPLY_AGENT_PORT
+  - name: CustomerServiceAgent
+    role: customer_service
+    avatar: 👨
+    host: customers-agent
+    port-env: CUSTOMERS_AGENT_PORT
 
     data_source:
-      download_from: harshmadhavan/vendor-performance-analysis
-      data_file: vendor_sales_summary.csv
-      target_file: data_sources/supply_chain.csv
+      download_from: jorah88/ibm-dataset
+      data_file: IBM_dataset_100k.xlsx
+      sheet_name: customer_churn_100k_imperfect_5
+      target_file: data_sources/customers.csv
 
     capabilities:
-      - name: demand_planning
-        avatar: 📦📈
-        validator: sales_prediction
+      - name: customer_satisfaction_improvement
+        avatar: 🤝
+        validator: satisfaction_prediction
 
     validators:
-      - name: sales_prediction
-        task: regression
-        target: TotalSalesQuantity
+      - name: satisfaction_prediction
+        task: classification
+        target: satisfaction_score
+        threshold: 7
         features:
-          - PurchasePrice
-          - ActualPrice
-          - TotalPurchaseQuantity
-        pass_condition: ">= MEAN"
+          - complaint_count
+          - support_tickets
+          - payment_delays
+          - monthly_charges
+          - daily_usage_hours
+          - features_used
+          - monthly_logins
+          - tenure_months
+        pass_condition: "== 1"
 
 
   - name: HRAgent
@@ -156,24 +169,24 @@ agents:
     port-env: HR_AGENT_PORT
 
     data_source:
-      download_from: stealthtechnologies/employee-attrition-dataset
-      data_file: train.csv
+      download_from: sircarlos/ibm-hr-data
+      data_file: "IBM HR Data.csv"
       target_file: data_sources/hr.csv
 
     capabilities:
       - name: workforce_performance
-        avatar: 📊⚡
-        validator: performance_rating
+        avatar: 🚀
+        validator: performance_rating_prediction
 
     validators:
-      - name: performance_rating
+      - name: performance_rating_prediction
         task: classification
-        target: Performance Rating
+        target: PerformanceRating
         features:
-          - Job Satisfaction
-          - Work-Life Balance
-          - Employee Recognition
-          - Job Level
-          - Leadership Opportunities
-          - Innovation Opportunities
-        pass_condition: ">= 2"
+          - JobLevel
+          - JobSatisfaction
+          - EnvironmentSatisfaction
+          - YearsAtCompany
+          - YearsInCurrentRole
+          - WorkLifeBalance
+        pass_condition: ">= 3"
