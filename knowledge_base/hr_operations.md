@@ -1,107 +1,67 @@
-# HR Operations Knowledge Base
+# Workforce Performance Knowledge Base
 
-This document describes how human resources performance is measured across departments and how HR-related decisions should be evaluated.  
-It is intended to support analytical agents in making workforce optimization and delivery-impact decisions.
+This dataset represents **employee demographics, job conditions, and satisfaction indicators** used to predict **employee performance levels**.
 
----
+Each row represents one employee and their workplace conditions.
 
-## Organizational Structure
+The goal is to understand which factors influence **employee performance ratings** and how workplace improvements can increase overall workforce effectiveness.
 
-The organization operates across multiple **departments**, such as:
-- Core
-- SaaS
-- AI Products
+## Key Metrics
 
-Employees within each department contribute differently based on role seniority, performance, and delivery impact.
+**JobLevel**  
+Seniority level of the employee within the organization.  
+Higher job levels usually correspond to more experience and responsibility.
 
----
+**JobSatisfaction**  
+Employee satisfaction with their job role and daily responsibilities.  
+Higher satisfaction generally correlates with better performance.
 
-## Dataset Overview
+**EnvironmentSatisfaction**  
+How satisfied employees are with their work environment and organizational culture.  
+Poor environments can negatively impact productivity and engagement.
 
-Each row in the dataset represents **one employee** and their contribution characteristics.
+**WorkLifeBalance**  
+Employee perception of balance between work responsibilities and personal life.  
+Better balance improves long-term productivity and reduces burnout.
 
-### Columns and Meaning
+**YearsAtCompany**  
+Total number of years the employee has worked in the company.  
+Longer tenure often indicates experience and organizational knowledge.
 
-- **employee**  
-  Unique identifier for an employee.
+**YearsInCurrentRole**  
+Time spent in the current position.  
+Employees with sufficient time in a role often perform more consistently.
 
-- **department**  
-  Business unit the employee belongs to.
+**PerformanceRating**  
+Target variable representing employee performance evaluation.
 
-- **role_level**  
-  Seniority or responsibility level of the role.  
-  Higher values indicate more senior or complex roles.
+Typical scale:
+- 1–2 = below expectations  
+- 3 = meets expectations  
+- 4 = exceeds expectations
 
-- **delivery_impact**  
-  Degree to which the employee affects delivery outcomes.  
-  Higher values indicate greater influence on timelines, quality, or risk.
+## Interpretation Guidelines
 
-- **performance_grade**  
-  Performance evaluation score (ordinal).  
-  Higher values represent stronger individual performance.
+Employee performance tends to improve when:
 
-- **contribution_rate**  
-  Measure of the employee’s overall contribution to team or business outcomes.  
-  Combines productivity, reliability, and effectiveness.
+- job satisfaction is high  
+- employees feel positive about their work environment  
+- work-life balance is maintained  
+- employees gain experience within the company and role
 
----
+Performance may decline when:
 
-## HR Interpretation Guidelines
+- employees feel disengaged from their job  
+- workplace environment is unsatisfactory  
+- employees are overworked or burned out
 
-### Performance and Contribution
-- High **performance_grade** combined with high **contribution_rate** indicates top performers.
-- Low contribution despite high role level may signal misalignment or inefficiency.
+## Optimization Principles
 
-### Delivery Impact
-- Employees with high **delivery_impact** significantly influence project success.
-- Underperformance in high-impact roles increases delivery risk.
+Agents should prioritize strategies that:
 
-### Role Level Balance
-- Higher **role_level** employees are typically more costly and critical.
-- Workforce efficiency depends on a balanced mix of senior and junior roles.
+- improve **job satisfaction**
+- enhance **work environment quality**
+- maintain healthy **work-life balance**
+- support employee growth and role stability
 
----
-
-## Common Workforce Optimization Strategies
-
-### Improve Delivery Outcomes
-- Prioritize development and retention of employees with high delivery impact.
-- Address performance gaps in roles critical to delivery.
-
-### Optimize Workforce Composition
-- Identify departments with many high role-level employees but low contribution rates.
-- Adjust team composition to improve efficiency and collaboration.
-
-### Performance Management
-- Support or retrain employees with low performance grades in high-impact roles.
-- Reward consistently high contributors to improve retention.
-
----
-
-## Risk Indicators
-
-Agents should treat the following as warning signals:
-- Low **performance_grade** combined with high **delivery_impact**
-- Low **contribution_rate** in senior roles
-- Departments with many high-impact but low-performing employees
-
----
-
-## Decision-Making Principles for Agents
-
-When making HR recommendations:
-- Focus on improving contribution in high-impact roles.
-- Avoid workforce reductions that increase delivery risk.
-- Support talent development over aggressive cost-cutting.
-- Use department-level trends, not isolated individuals.
-
----
-
-## Summary
-
-HR operations aim to:
-- Align employee performance with delivery needs
-- Maintain a balanced and effective workforce
-- Reduce delivery risk through targeted talent management
-
-Agents should use this knowledge to make data-driven HR decisions that support sustainable business performance.
+Workforce improvements should focus on **sustainable employee well-being and engagement**, which naturally increases performance.

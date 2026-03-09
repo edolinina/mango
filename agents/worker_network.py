@@ -127,10 +127,12 @@ def validation_node(state):
     features = validator["features"]
     expected = set(features)
 
-    if set(df_val.columns) != expected:
+    missing_features = expected - set(df_val.columns)
+    if missing_features:
         raise ValueError(
             f"Invalid validation_samples schema.\n"
-            f"Expected: {expected}\n"
+            f"Missing required features: {missing_features}\n"
+            f"Expected at least: {expected}\n"
             f"Got: {df_val.columns.tolist()}"
         )
 

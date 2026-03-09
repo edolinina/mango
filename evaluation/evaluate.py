@@ -33,18 +33,17 @@ logger = setup_logger()
 
 # List of evaluation tasks
 EVALUATION_TASKS = [
-    "Increase net income while improving customer satisfaction",
-    "Reduce operating expenses while maintaining high customer satisfaction",
-    "Improve profitability while maintaining strong employee performance",
-    "Increase net income without reducing workforce performance",
-    "Improve customer satisfaction while controlling operating expenses",
-    "Increase employee performance while improving customer satisfaction",
-    "Improve profitability while keeping both customer satisfaction and employee performance stable",
-    "Reduce operating costs without negatively affecting customer satisfaction or workforce performance",
-    "Increase business profitability while improving both service quality and employee performance",
-    "Achieve balanced improvement in profitability, customer satisfaction, and workforce performance"
+    "Increase net income while reducing customer churn",
+    "Increase profitability while maintaining strong workforce performance",
+    "Reduce customer churn while maintaining high employee performance",
+    "Increase net income without increasing customer churn",
+    "Improve workforce performance while increasing customer loyalty",
+    "Increase profitability while reducing customer complaints and support issues",
+    "Improve customer loyalty while maintaining strong business profitability",
+    "Increase employee performance while reducing customer churn risk",
+    "Improve profitability while keeping both customer loyalty and workforce performance stable",
+    "Achieve balanced improvement in net income, customer loyalty, and workforce performance"
 ]
-
 
 class MangoEvaluator:
     def __init__(self):
