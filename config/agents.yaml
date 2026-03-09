@@ -103,9 +103,16 @@ agents:
         task: regression
         target: netIncome
         features:
+          - totalRevenue
           - grossProfit
           - operatingIncome
           - incomeBeforeTax
+          - interestExpense
+          - incomeTaxExpense
+          - costOfRevenue
+          - sellingGeneralAndAdministrative
+          - researchAndDevelopment
+          - operatingExpenses
         pass_condition: ">= MEAN"
 
   - name: CustomerServiceAgent
@@ -121,7 +128,7 @@ agents:
       target_file: data_sources/customers.csv
 
     capabilities:
-      - name: customer_satisfaction_improvement
+      - name: customer_loyalty_improvement
         avatar: 🤝
         validator: customers
 
@@ -130,14 +137,16 @@ agents:
         task: classification
         target: churn
         features:
+          - satisfaction_score
           - complaint_count
           - support_tickets
           - payment_delays
           - monthly_charges
-          - features_used
+          - daily_usage_hours
           - monthly_logins
+          - features_used
           - tenure_months
-          - satisfaction_score
+          - autopay_enabled
         pass_condition: "== 1"
 
 
@@ -153,7 +162,7 @@ agents:
       target_file: data_sources/hr.csv
 
     capabilities:
-      - name: workforce_performance
+      - name: workforce_performance_improvement
         avatar: 🚀
         validator: workforce
 
@@ -163,9 +172,13 @@ agents:
         target: PerformanceRating
         features:
           - JobLevel
+          - JobInvolvement
           - JobSatisfaction
           - EnvironmentSatisfaction
-          - YearsAtCompany
-          - YearsInCurrentRole
           - WorkLifeBalance
+          - TrainingTimesLastYear
+          - YearsInCurrentRole
+          - YearsSinceLastPromotion
+          - YearsWithCurrManager
+          - PercentSalaryHike
         pass_condition: ">= 3"
