@@ -96,37 +96,17 @@ agents:
     capabilities:
       - name: profitability_optimization
         avatar: 📊
-        validator: profit_prediction
-
-      - name: cost_optimization
-        avatar: 💰
-        validator: cost_prediction
+        validator: profit
 
     validators:
-      - name: profit_prediction
+      - name: profit
         task: regression
         target: netIncome
         features:
-          - totalRevenue
           - grossProfit
           - operatingIncome
           - incomeBeforeTax
-          - interestExpense
-          - incomeTaxExpense
         pass_condition: ">= MEAN"
-
-      - name: cost_prediction
-        task: regression
-        target: operatingExpenses
-        features:
-          - grossProfit
-          - operatingIncome
-          - costOfRevenue
-          - researchAndDevelopment
-          - sellingGeneralAndAdministrative
-          - depreciation
-        pass_condition: "<= MEAN"
-
 
   - name: CustomerServiceAgent
     role: customer_service
@@ -143,22 +123,21 @@ agents:
     capabilities:
       - name: customer_satisfaction_improvement
         avatar: 🤝
-        validator: satisfaction_prediction
+        validator: customers
 
     validators:
-      - name: satisfaction_prediction
+      - name: customers
         task: classification
-        target: satisfaction_score
-        threshold: 5
+        target: churn
         features:
           - complaint_count
           - support_tickets
           - payment_delays
           - monthly_charges
-          - daily_usage_hours
           - features_used
           - monthly_logins
           - tenure_months
+          - satisfaction_score
         pass_condition: "== 1"
 
 
@@ -176,10 +155,10 @@ agents:
     capabilities:
       - name: workforce_performance
         avatar: 🚀
-        validator: performance_rating_prediction
+        validator: workforce
 
     validators:
-      - name: performance_rating_prediction
+      - name: workforce
         task: classification
         target: PerformanceRating
         features:

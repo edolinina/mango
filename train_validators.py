@@ -1,6 +1,5 @@
 import os
 import json
-import shutil
 from pathlib import Path
 
 import joblib
@@ -9,14 +8,64 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
+from sklearn.metrics import f1_score, r2_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.model_selection import train_test_split
+
+import matplotlib.pyplot as plt
 
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
 SUMMARY_DIR = "models/summary"
-MODEL_EVAL_PASSING_THRESHOLD = 0.55
+MODEL_EVAL_PASSING_THRESHOLD = 0.6
+MODEL_RESULTS = []
+
+# Shared RandomForest hyperparameters
+RF_PARAMS = {
+    "n_estimators": 200,
+    "max_depth": 12,
+    "random_state": 42,
+}
+RF_MIN_SAMPLES_LEAF_CLASSIFIER = 20
+RF_MIN_SAMPLES_LEAF_REGRESSOR = 10
+
+
+def plot_model_scores():
+    if not MODEL_RESULTS:
+        return
+
+    df = pd.DataFrame(MODEL_RESULTS)
+
+    labels = df["validator"]
+    train_scores = df["train_score"]
+    test_scores = df["test_score"]
+
+    x = np.arange(len(labels))
+    width = 0.35
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(x - width/2, train_scores, width, label='Train Score', color='skyblue')
+    plt.bar(x + width/2, test_scores, width, label='Test Score', color='coral')
+
+    plt.axhline(
+        y=MODEL_EVAL_PASSING_THRESHOLD,
+        color="red",
+        linestyle="--",
+        label="Pass Threshold"
+    )
+
+    plt.xticks(x, labels, rotation=45, ha="right")
+    plt.ylabel("Score")
+    plt.title("Validator Model Evaluation Scores")
+    plt.legend()
+
+    plot_path = "validators_training_scores.png"
+    plt.tight_layout()
+    plt.savefig(plot_path)
+    plt.show()
+
+    print(f"Saved evaluation plot → {plot_path}")
 
 
 def find_file_recursively(root_dir: str, filename: str) -> str | None:
@@ -102,7 +151,7 @@ def download_dataset(data_source_config):
     return target_path
 
 
-def preprocess_data(task, X, y, classifier_threshold=None):
+def preprocess_data(task, X, y):
     """
     Clean dataset, encode categorical features, and prepare target
     for regression or classification.
@@ -132,14 +181,6 @@ def preprocess_data(task, X, y, classifier_threshold=None):
                 name=y.name
             )
             print("Encoded categorical target with LabelEncoder")
-
-        # continuous numeric target used as classification -> convert to binary
-        elif y_clean.nunique() > 10:
-            threshold = classifier_threshold if classifier_threshold is not None else y_clean.mean()
-            y_clean = (y_clean >= threshold).astype(int)
-            print(
-                f"Converted target to binary classes using mean threshold: {threshold}"
-            )
 
     else:
         # regression target
@@ -210,8 +251,15 @@ def generate_summary_stats(df, agent_name, capability_name, validator):
 def create_model(task: str):
     """Use only the simplest models."""
     if task == "classification":
-        return LogisticRegression(max_iter=1000)
-    return LinearRegression()
+        return RandomForestClassifier(
+            **RF_PARAMS,
+            min_samples_leaf=RF_MIN_SAMPLES_LEAF_CLASSIFIER,
+            class_weight="balanced",
+        )
+    return RandomForestRegressor(
+        **RF_PARAMS,
+        min_samples_leaf=RF_MIN_SAMPLES_LEAF_REGRESSOR,
+    )
 
 
 def train_validator(agent_name, data_source, validator, capability_name):
@@ -223,7 +271,6 @@ def train_validator(agent_name, data_source, validator, capability_name):
     target = validator["target"]
     features = validator["features"]
     task = validator.get("task", "regression")
-    classifier_threshold = validator.get("threshold")
 
     generate_summary_stats(df, agent_name, capability_name, validator)
     print(f"Saved summary stats → {SUMMARY_DIR}/{agent_name}_{capability_name}_stats.json")
@@ -236,26 +283,38 @@ def train_validator(agent_name, data_source, validator, capability_name):
     print(f"Sample target values: {y.head().tolist()}")
 
     X_processed, y_processed, scaler, encoders, target_encoder = \
-        preprocess_data(task, X, y, classifier_threshold)
+        preprocess_data(task, X, y)
 
     print(f"Processed shape: X={X_processed.shape} y={y_processed.shape}")
 
     model = create_model(task)
     print(f"Using model: {model.__class__.__name__}")
 
-    model.fit(X_processed, y_processed)
-    preds = model.predict(X_processed)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_processed,
+        y_processed,
+        test_size=0.1,
+        random_state=42,
+        stratify=y_processed if task == "classification" else None
+    )
+
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+    train_preds = model.predict(X_train)
 
     if task == "classification":
-        score = accuracy_score(y_processed, preds)
-        metric_name = "Accuracy"
+        score = f1_score(y_test, preds, average='weighted')
+        train_score = f1_score(y_train, train_preds, average='weighted')
+        metric_name = "F1 Score"
     else:
         preds = np.maximum(preds, 0)
-        score = r2_score(y_processed, preds)
+        score = r2_score(y_test, preds)
+        train_score = r2_score(y_train, train_preds)
         metric_name = "R²"
     
     passed = score >= MODEL_EVAL_PASSING_THRESHOLD
-    print(f"{metric_name}: {score:.3f}")
+    print(f"Test {metric_name}: {score:.3f}")
+    print(f"Train {metric_name}: {train_score:.3f}")
     print("Validator result:", "PASS" if passed else "FAIL")
 
     sample_pred = model.predict(X_processed[:5])
@@ -284,6 +343,13 @@ def train_validator(agent_name, data_source, validator, capability_name):
     print(f"Saved scaler → {scaler_path}")
     print(f"Saved encoders → {encoders_path}")
 
+    MODEL_RESULTS.append({
+        "agent": agent_name,
+        "validator": validator["name"],
+        "metric": metric_name,
+        "test_score": score,
+        "train_score": train_score
+    })
 
 def main():
     with open(CONFIG_PATH, "r") as f:
@@ -312,6 +378,8 @@ def main():
             )
 
             train_validator(agent_name, data_source, validator, capability_name)
+    
+    plot_model_scores()
 
 
 if __name__ == "__main__":
