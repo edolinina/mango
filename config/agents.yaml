@@ -122,9 +122,8 @@ agents:
     port-env: CUSTOMERS_AGENT_PORT
 
     data_source:
-      download_from: jorah88/ibm-dataset
-      data_file: IBM_dataset_100k.xlsx
-      sheet_name: customer_churn_100k_imperfect_5
+      download_from: avabang/ibm-merged-data
+      data_file: df_merged.csv
       target_file: data_sources/customers.csv
 
     capabilities:
@@ -135,18 +134,17 @@ agents:
     validators:
       - name: customers
         task: classification
-        target: churn
+        target: Churn
         features:
-          - satisfaction_score
-          - complaint_count
-          - support_tickets
-          - payment_delays
-          - monthly_charges
-          - daily_usage_hours
-          - monthly_logins
-          - features_used
-          - tenure_months
-          - autopay_enabled
+          - Partner
+          - Tenure
+          - Internet Service
+          - Online Security
+          - Device Protection
+          - Tech Support
+          - Paperless Billing
+          - Total Charges
+          - Number of Referrals
         pass_condition: "== 1"
 
 
