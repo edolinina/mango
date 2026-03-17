@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
 SUMMARY_DIR = "models/summary"
-MODEL_EVAL_PASSING_THRESHOLD = 0.6
+MODEL_EVAL_PASSING_THRESHOLD = 0.75
 MODEL_RESULTS = []
 
 # Shared RandomForest hyperparameters
@@ -30,6 +30,9 @@ RF_PARAMS = {
 RF_MIN_SAMPLES_LEAF_CLASSIFIER = 20
 RF_MIN_SAMPLES_LEAF_REGRESSOR = 10
 
+AUGMENT_MIN_ROWS = 500      # augment if training set has fewer rows than this
+AUGMENT_MULTIPLIER = 5      # how many synthetic copies to add
+AUGMENT_NOISE_STD = 0.05    # std of Gaussian noise (relative to feature std=1 since scaled)
 
 def plot_model_scores():
     if not MODEL_RESULTS:
@@ -262,6 +265,40 @@ def create_model(task: str):
     )
 
 
+def augment_data(X: pd.DataFrame, y: pd.Series, task: str,
+                 multiplier: int = AUGMENT_MULTIPLIER,
+                 noise_std: float = AUGMENT_NOISE_STD):
+    """
+    Augment a small dataset by adding Gaussian noise copies.
+    For classification, preserves class balance by augmenting per class.
+    """
+    rng = np.random.default_rng(42)
+    X_parts = [X]
+    y_parts = [y]
+
+    if task == "classification":
+        classes = y.unique()
+        for cls in classes:
+            mask = y == cls
+            X_cls = X[mask]
+            y_cls = y[mask]
+            for _ in range(multiplier):
+                noise = rng.normal(0, noise_std, size=X_cls.shape)
+                X_parts.append(pd.DataFrame(X_cls.values + noise, columns=X.columns))
+                y_parts.append(y_cls.reset_index(drop=True))
+    else:
+        for _ in range(multiplier):
+            noise = rng.normal(0, noise_std, size=X.shape)
+            X_parts.append(pd.DataFrame(X.values + noise, columns=X.columns))
+            y_parts.append(y.reset_index(drop=True))
+
+    X_aug = pd.concat(X_parts, ignore_index=True)
+    y_aug = pd.concat(y_parts, ignore_index=True)
+
+    print(f"Augmented dataset: {len(X)} → {len(X_aug)} rows")
+    return X_aug, y_aug
+
+
 def train_validator(agent_name, data_source, validator, capability_name):
     print(f"\nTraining {agent_name} → {validator['name']}")
 
@@ -297,6 +334,13 @@ def train_validator(agent_name, data_source, validator, capability_name):
         random_state=42,
         stratify=y_processed if task == "classification" else None
     )
+
+    # Augment only the training split if it's small
+    augment = validator.get("augment", True)
+    augment_min_rows = validator.get("augment_min_rows", AUGMENT_MIN_ROWS)
+    if augment and len(X_train) < augment_min_rows:
+        print(f"Small training set ({len(X_train)} rows < {augment_min_rows}), applying augmentation...")
+        X_train, y_train = augment_data(X_train, y_train, task)
 
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
