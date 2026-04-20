@@ -18,9 +18,26 @@ class Recommendation(TypedDict):
     explanation: str
     validation_samples: List[dict]
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
+    # LangGraph control fields
     directives: List[dict]
-    results: Annotated[List[dict], operator.add]
+    results: dict
+    # Directive fields
+    prompt: str
+    task: str
+    context: str
+    model: object
+    data_summary: dict
+    constraints: str
+    cap: dict
+    directive: dict
+    _id: str
+    validator: dict
+    judge_config: dict
+    # Output fields
+    validation: dict
+    llm_judge: dict
+
 
 class JudgeOutput(TypedDict):
     strategic_alignment: int
@@ -34,7 +51,7 @@ class JudgeOutput(TypedDict):
 # --- Nodes implementations ---
 def load_validator(state):
     data_summary = state["data_summary"]
-    validator = state["validator"]
+    validator = dict(state["validator"])  # shallow copy to avoid mutating input
     target = validator["target"]
     features = validator["features"]
     pass_condition = validator["pass_condition"]
@@ -70,19 +87,20 @@ def load_validator(state):
     if not os.path.exists(model_path):
         raise ValueError(f"Pretrained model not found: {model_path}")
     
-    state["validator"]["model"] = joblib.load(model_path)
+    validator["model"] = joblib.load(model_path)
 
     scaler_path = model_path.replace(".pkl", "_scaler.pkl")
     encoders_path = model_path.replace(".pkl", "_encoders.pkl")
 
     if os.path.exists(scaler_path):
-        state["validator"]["scaler"] = joblib.load(scaler_path)
+        validator["scaler"] = joblib.load(scaler_path)
 
     if os.path.exists(encoders_path):
-        state["validator"]["encoders"] = joblib.load(encoders_path)
+        validator["encoders"] = joblib.load(encoders_path)
 
-    state["validator"]["pass_condition"] = pass_condition
-    return state
+    validator["pass_condition"] = pass_condition
+
+    return {"validator": validator}  # return only the updated key
 
 
 async def llm_node(state):
@@ -108,9 +126,7 @@ async def llm_node(state):
     )
     
     answer = await model.ainvoke(prompt)
-
-    state["results"] = answer
-    return state
+    return {"results": answer}  # return only updated key
 
 
 def validation_node(state):
@@ -143,7 +159,19 @@ def validation_node(state):
     # Apply label encoders
     for col, le in encoders.items():
         if col in X_val.columns:
-            X_val[col] = le.transform(X_val[col].astype(str))
+            # Map unseen labels to the closest known class or 0
+            def safe_encode(val, le=le):
+                try:
+                    return le.transform([str(val)])[0]
+                except ValueError:
+                    # Try numeric fallback: if value is already a valid int index, use it clipped
+                    try:
+                        idx = int(float(str(val)))
+                        return max(0, min(idx, len(le.classes_) - 1))
+                    except (ValueError, TypeError):
+                        return 0
+
+            X_val[col] = X_val[col].apply(safe_encode)
 
     # Ensure numeric
     for col in X_val.columns:
@@ -182,7 +210,20 @@ def validation_node(state):
         "status": status
     }
 
-    return state
+    return {"validation": {
+        "passed": passed,
+        "failed": failed,
+        "total": total,
+        "pass_rate": round(pass_rate, 2),
+        "status": status
+    }}
+
+
+async def judge_node_wrapper(state):
+    """Adapter so judge_node can be used as a graph node (reads judge_config from state)."""
+    judge_config = state.get("judge_config", {})
+    return await judge_node(state, judge_config)
+
 
 async def judge_node(state, judge_config):
     """Evaluate agent output using LLM judge."""
@@ -220,81 +261,65 @@ async def judge_node(state, judge_config):
     ]
 
     judgment["overall_score"] = sum(scores) / len(scores)
-    state["llm_judge"] = judgment
-    return state
+    return {"llm_judge": judgment}  # return only updated key
 
 
 async def run_directive_branch(directive_state: dict) -> dict:
-    """Run llm (+ optional validator + optional judge) for a single directive and return result."""
-    if "validator" in directive_state:
-        directive_state = load_validator(directive_state)
-    
-    directive_state = await llm_node(directive_state)
-    
-    if "validator" in directive_state:
-        directive_state = validation_node(directive_state)
-    
-    # Apply judge if evaluation mode is enabled
-    if EVALUATION_MODE and "judge_config" in directive_state:
-        directive_state = await judge_node(directive_state, directive_state["judge_config"])
+    """Compile and run a per-directive graph, return result."""
+    compiled = build_directive_graph(directive_state)
+    final_state = await compiled.ainvoke(directive_state)
 
     return {
-        "cap": directive_state.get("cap"),
-        "directive": directive_state.get("directive"),
-        "_id": directive_state.get("_id"),
-        "results": directive_state.get("results"),
-        "validation": directive_state.get("validation"),
-        "llm_judge": directive_state.get("llm_judge"),
+        "cap": final_state.get("cap"),
+        "directive": final_state.get("directive"),
+        "_id": final_state.get("_id"),
+        "results": final_state.get("results"),
+        "validation": final_state.get("validation"),
+        "llm_judge": final_state.get("llm_judge"),
     }
 
 
-def build_agent_network(directives: list) -> StateGraph:
-    """Build a LangGraph for visualization showing all directive branches."""
+def build_directive_graph(directive: dict):
+    """
+    Build and compile a LangGraph for a single directive.
+    One directive = one graph run.
+    """
     graph = StateGraph(AgentState)
-    
-    def aggregate_node(state: AgentState) -> AgentState:
-        return state
-    
-    graph.add_node("aggregate", aggregate_node)
 
-    for i, directive in enumerate(directives):
-        has_validator = "validator" in directive
-        has_judge = EVALUATION_MODE and "judge_config" in directive
-        agent_name = directive.get("_agent", f"agent_{i}")
-        cap_name = directive.get("cap", {}).get("name", f"directive_{i}")
-        branch = f"{agent_name}_{cap_name}"
+    has_validator = "validator" in directive
+    has_judge = EVALUATION_MODE and "judge_config" in directive
 
-        if has_validator and has_judge:
-            graph.add_node(f"{branch}_load_validator", lambda s: s)
-            graph.add_node(f"{branch}_llm", lambda s: s)
-            graph.add_node(f"{branch}_validation", lambda s: s)
-            graph.add_node(f"{branch}_judge", lambda s: s)
-            graph.add_edge(START, f"{branch}_load_validator")
-            graph.add_edge(f"{branch}_load_validator", f"{branch}_llm")
-            graph.add_edge(f"{branch}_llm", f"{branch}_validation")
-            graph.add_edge(f"{branch}_validation", f"{branch}_judge")
-            graph.add_edge(f"{branch}_judge", "aggregate")
-        elif has_validator:
-            graph.add_node(f"{branch}_load_validator", lambda s: s)
-            graph.add_node(f"{branch}_llm", lambda s: s)
-            graph.add_node(f"{branch}_validation", lambda s: s)
-            graph.add_edge(START, f"{branch}_load_validator")
-            graph.add_edge(f"{branch}_load_validator", f"{branch}_llm")
-            graph.add_edge(f"{branch}_llm", f"{branch}_validation")
-            graph.add_edge(f"{branch}_validation", "aggregate")
-        elif has_judge:
-            graph.add_node(f"{branch}_llm", lambda s: s)
-            graph.add_node(f"{branch}_judge", lambda s: s)
-            graph.add_edge(START, f"{branch}_llm")
-            graph.add_edge(f"{branch}_llm", f"{branch}_judge")
-            graph.add_edge(f"{branch}_judge", "aggregate")
+    if has_validator:
+        graph.add_node("load_validator", load_validator)
+
+    graph.add_node("llm", llm_node)
+
+    if has_validator:
+        graph.add_node("validation", validation_node)
+
+    if has_judge:
+        graph.add_node("judge", judge_node_wrapper)
+
+    if has_validator:
+        graph.add_edge(START, "load_validator")
+        graph.add_edge("load_validator", "llm")
+        graph.add_edge("llm", "validation")
+
+        if has_judge:
+            graph.add_edge("validation", "judge")
+            graph.add_edge("judge", END)
         else:
-            graph.add_node(f"{branch}_llm", lambda s: s)
-            graph.add_edge(START, f"{branch}_llm")
-            graph.add_edge(f"{branch}_llm", "aggregate")
+            graph.add_edge("validation", END)
+    else:
+        graph.add_edge(START, "llm")
 
-    graph.add_edge("aggregate", END)
-    return graph
+        if has_judge:
+            graph.add_edge("llm", "judge")
+            graph.add_edge("judge", END)
+        else:
+            graph.add_edge("llm", END)
+
+    return graph.compile()
 
 
 async def run_agent_network(directives: list):

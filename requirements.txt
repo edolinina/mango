@@ -26,6 +26,11 @@ sentence-transformers
 unstructured[md]
 faiss-cpu
 
+# --- Torch (CPU only) ---
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+
 # --- Visualization ---
 matplotlib
 seaborn

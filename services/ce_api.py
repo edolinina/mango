@@ -76,10 +76,7 @@ def create_ce_app(ce):
     @app.get("/")
     async def ui(request: Request):
         app.mount("/static", static_files, name="static")
-        return templates.TemplateResponse(
-            "index.html",
-            {"request": request}
-        )
+        return templates.TemplateResponse(request, "index.html")
 
     # ---------- Orchestrator entry ----------
     @app.post("/run")
