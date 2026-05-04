@@ -1,32 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MANGO Operator</title>
-  <link rel="icon" href="data:image/svg+xml,
-  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-    <text y='0.9em' font-size='90'>🥭</text>
-  </svg>">
-
-  <!-- CSS -->
-  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🥭</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=20260504-2">
 </head>
 <body>
 
-<div class="card">
-  <h1>MANGO 🥭 Operator</h1>
+<div id="root"></div>
 
-  <textarea id="task" placeholder="Describe your task..."></textarea>
-  <button id="runBtn" onclick="run()">RUN</button>
-
-  <div class="spinner" id="spinner">
-  <div class="loader"></div>
-    <p>Waiting for Agents</p>
-  </div>
-  <div class="agents" id="agents"></div>
-  <div id="output" class="results"></div>
-</div>
-
-<!-- JS -->
-<script src="{{ url_for('static', path='js/app.js') }}"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" src="{{ url_for('static', path='js/app.js') }}?v=20260504-2"></script>
 </body>
 </html>

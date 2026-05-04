@@ -1,18 +1,18 @@
 import json
 import uuid
 import logging
+import httpx
 
 from pydantic import BaseModel, Field
-from typing import List
 
-from mcp_server.protocol import MCPEnvelope, Directive
+from agents.schemas import Directive, MCPEnvelope
 from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
 
 
 class CEOutput(BaseModel):
-    directives: List[Directive]
+    directives: list[Directive]
     task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 
@@ -26,9 +26,15 @@ class CentralExecutive:
         self.agents = agents
         self.task_id = None
         self.directives = None
+        self.workflow_error = None
+
+    def clear_workflow_error(self):
+        self.workflow_error = None
+
+    def set_workflow_error(self, message: str):
+        self.workflow_error = message
 
     async def generate_directives(self, task: str) -> CEOutput:
-        """Use LLM ONLY to generate structured directives"""
         logger.info(f"CE task: {task}.")
         directive = self.instructions.format(
             task=task,
@@ -40,17 +46,26 @@ class CentralExecutive:
                 for a in self.agents
             }
         )
-        directives = await self.model.ainvoke(directive)
-        self.task_id = directives.task_id
-        return directives
+        try:
+            directives = await self.model.ainvoke(directive)
+            self.task_id = directives.task_id
+            return directives
+        except httpx.ConnectError as e:
+            logger.error(f"Failed to connect to LLM: {e}. Check OLLAMA_URL or LLM_PROVIDER configuration.")
+            raise
+        except Exception as e:
+            logger.error(f"Error generating directives: {e}")
+            raise
     
     def update_directives(self, directives: CEOutput):
-        """Set current directives"""
         self.directives = directives
 
     async def send_directives(self, intent: CEOutput):
-        """Send directives to MCP"""
         mcp_endpoint = await get_mcp_endpoint(self.client, "send_directive")
+        if not mcp_endpoint:
+            logger.error("Cannot send directives: MCP service unavailable")
+            raise RuntimeError("MCP service unavailable")
+        
         results = []
 
         logger.info("Sending directives to agents:")
@@ -73,11 +88,16 @@ class CentralExecutive:
         return results
     
     async def collect_agent_feedback(self):
-        mcp_endpoint = await get_mcp_endpoint(self.client, "list_messages")
-        if not mcp_endpoint:
-            return {}
+        try:
+            mcp_endpoint = await get_mcp_endpoint(self.client, "list_messages")
+            if not mcp_endpoint:
+                logger.error("MCP list_messages endpoint unavailable")
+                return {}
 
-        messages = await mcp_endpoint.ainvoke({})
+            messages = await mcp_endpoint.ainvoke({})
+        except Exception as e:
+            logger.error(f"Failed to collect agent feedback: {e}")
+            return {}
 
         results = {}
         for msg in messages:

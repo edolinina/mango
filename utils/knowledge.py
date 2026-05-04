@@ -19,7 +19,7 @@ def load_knowledge():
 def get_knowledge_retriever():
     docs = load_knowledge()
     embeddings = HuggingFaceEmbeddings(
-        model_name=os.getenv("EMBEDDING_MODEL")
+        model_name=os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     )
 
     splitter = RecursiveCharacterTextSplitter(

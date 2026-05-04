@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from pathlib import Path
 
 import joblib
@@ -20,6 +21,9 @@ MODELS_DIR = "models"
 SUMMARY_DIR = "models/summary"
 MODEL_EVAL_PASSING_THRESHOLD = 0.75
 MODEL_RESULTS = []
+
+logger = logging.getLogger("mango")
+logging.basicConfig(level=logging.INFO)
 
 # Shared RandomForest hyperparameters
 RF_PARAMS = {
@@ -95,13 +99,24 @@ def list_dataset_files(root_dir: str) -> list[str]:
 
 def download_dataset(data_source_config):
     """
-    Download dataset from Kaggle.
+    Download dataset from Kaggle (if configured) or use local target_file.
     Supports automatic Excel -> CSV conversion when sheet_name is provided.
     """
 
     target_path = data_source_config["target_file"]
-    data_file = data_source_config["data_file"]
-    kaggle_id = data_source_config["download_from"]
+    
+    # Check if already exists locally
+    if os.path.exists(target_path):
+        logger.info(f"Dataset already exists at {target_path}, skipping download")
+        return target_path
+    
+    # If no download_from configured, skip download
+    kaggle_id = data_source_config.get("download_from")
+    if not kaggle_id:
+        logger.warning(f"No download_from configured and target file not found: {target_path}")
+        return None
+    
+    data_file = data_source_config.get("data_file", target_path.split("/")[-1])
     sheet_name = data_source_config.get("sheet_name")
 
     downloaded_path = kagglehub.dataset_download(kaggle_id)
@@ -302,7 +317,7 @@ def augment_data(X: pd.DataFrame, y: pd.Series, task: str,
 def train_validator(agent_name, data_source, validator, capability_name):
     print(f"\nTraining {agent_name} → {validator['name']}")
 
-    df = pd.read_csv(data_source)
+    df = pd.read_csv(data_source, low_memory=False)
     df.columns = df.columns.str.strip()
 
     target = validator["target"]
@@ -401,6 +416,10 @@ def main():
 
     for agent in config.get("agents", []):
         agent_name = agent["name"]
+        if agent_name != "CentralExecutive" and not agent.get("enabled", True):
+            logger.info(f"Skipping disabled agent {agent_name} during validator training")
+            continue
+
         data_source_config = agent.get("data_source")
 
         if not data_source_config:

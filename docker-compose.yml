@@ -9,6 +9,7 @@ services:
       dockerfile: Dockerfile
       target: mango-mcp
     image: mango-mcp
+    <<: *common-env
     ports:
       - "${MCP_PORT}:${MCP_PORT}"
 
@@ -39,7 +40,6 @@ services:
     environment:
       SERVICE_MODE: ce
       SERVICE_PORT: ${CE_PORT}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${CE_PORT}:${CE_PORT}"
     volumes:
@@ -58,7 +58,6 @@ services:
       SERVICE_MODE: agent
       AGENT_NAME: BusinessAgent
       SERVICE_PORT: ${BUSINESS_AGENT_PORT}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${BUSINESS_AGENT_PORT}:${BUSINESS_AGENT_PORT}"
     volumes:
@@ -77,7 +76,6 @@ services:
       SERVICE_MODE: agent
       AGENT_NAME: CustomerServiceAgent
       SERVICE_PORT: ${CUSTOMERS_AGENT_PORT}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${CUSTOMERS_AGENT_PORT}:${CUSTOMERS_AGENT_PORT}"
     volumes:
@@ -96,7 +94,6 @@ services:
       SERVICE_MODE: agent
       AGENT_NAME: HRAgent
       SERVICE_PORT: ${HR_AGENT_PORT}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports:
       - "${HR_AGENT_PORT}:${HR_AGENT_PORT}"
     volumes:

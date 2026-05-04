@@ -22,9 +22,18 @@ def parse_evaluation_results(yaml_file):
                 cap_name = capability['capability']
                 validation = capability.get('validation', {})
                 
-                # Extract ML validator score (convert pass_rate to 1-10 scale)
-                ml_validator = validation.get('ml_validator')
-                ml_score = (ml_validator['pass_rate'] / 10.0) if ml_validator else None
+                self_validation = validation.get('self_validation') or validation.get('ml_validator')
+                self_score = None
+                if self_validation:
+                    status_scores = {
+                        'pass': 10.0,
+                        'success': 10.0,
+                        'refine': 6.0,
+                        'required': 5.0,
+                        'partial_pass': 5.0,
+                        'fail': 2.0,
+                    }
+                    self_score = status_scores.get(self_validation.get('status'), 5.0)
                 
                 # Extract LLM judge score
                 llm_judge = validation.get('llm_judge')
@@ -47,7 +56,7 @@ def parse_evaluation_results(yaml_file):
                     'task': task,
                     'agent': agent,
                     'capability': cap_name,
-                    'ml_validator': ml_score,
+                    'self_validation': self_score,
                     'llm_judge': llm_score,
                     'human_expert': human_score
                 })
@@ -63,7 +72,7 @@ def print_summary_statistics(df):
     
     # Overall averages
     print("\nOverall Averages:")
-    print(f"  ML Validator:   {df['ml_validator'].mean():.2f}/10")
+    print(f"  Self Validation:{df['self_validation'].mean():.2f}/10")
     print(f"  LLM Judge:      {df['llm_judge'].mean():.2f}/10")
     if df['human_expert'].notna().any():
         print(f"  Human Expert:   {df['human_expert'].mean():.2f}/10")
@@ -74,7 +83,7 @@ def print_summary_statistics(df):
     for idx, task in enumerate(tasks, start=1):
         task_df = df[df['task'] == task]
         print(f"\n  Task #{idx}")
-        print(f"    ML Validator:   {task_df['ml_validator'].mean():.2f}/10")
+        print(f"    Self Validation:{task_df['self_validation'].mean():.2f}/10")
         print(f"    LLM Judge:      {task_df['llm_judge'].mean():.2f}/10")
         if task_df['human_expert'].notna().any():
             print(f"    Human Expert:   {task_df['human_expert'].mean():.2f}/10")
@@ -84,7 +93,7 @@ def print_summary_statistics(df):
     for agent in df['agent'].unique():
         agent_df = df[df['agent'] == agent]
         print(f"\n  {agent}:")
-        print(f"    ML Validator:   {agent_df['ml_validator'].mean():.2f}/10")
+        print(f"    Self Validation:{agent_df['self_validation'].mean():.2f}/10")
         print(f"    LLM Judge:      {agent_df['llm_judge'].mean():.2f}/10")
         if agent_df['human_expert'].notna().any():
             print(f"    Human Expert:   {agent_df['human_expert'].mean():.2f}/10")
@@ -100,7 +109,7 @@ def create_visualizations(df):
     plt.rcParams['figure.figsize'] = (8, 4)
 
     # 1) Overall Average Scores by Validation Method
-    overall_means = df[['ml_validator', 'llm_judge', 'human_expert']].mean()
+    overall_means = df[['self_validation', 'llm_judge', 'human_expert']].mean()
     fig, ax = plt.subplots(figsize=(8, 4))
     bars = ax.bar(range(len(overall_means)), overall_means.values,
                   color=['#3498db', '#e74c3c', '#2ecc71'], width=0.6)
@@ -117,7 +126,7 @@ def create_visualizations(df):
     plt.show()
 
     # 2) Average Scores by Task (use compact figure)
-    task_means = df.groupby('task')[['ml_validator', 'llm_judge', 'human_expert']].mean()
+    task_means = df.groupby('task')[['self_validation', 'llm_judge', 'human_expert']].mean()
     labels = [f"Task #{i}" for i in range(1, len(task_means) + 1)]
     fig, ax = plt.subplots(figsize=(8, 4))
     task_means.plot(kind='bar', ax=ax, color=['#3498db', '#e74c3c', '#2ecc71'], width=0.7)
@@ -131,7 +140,7 @@ def create_visualizations(df):
     plt.show()
 
     # 3) Average Scores by Agent (compact)
-    agent_means = df.groupby('agent')[['ml_validator', 'llm_judge', 'human_expert']].mean()
+    agent_means = df.groupby('agent')[['self_validation', 'llm_judge', 'human_expert']].mean()
     fig, ax = plt.subplots(figsize=(7, 4))
     agent_means.plot(kind='bar', ax=ax, color=['#3498db', '#e74c3c', '#2ecc71'], width=0.7)
     ax.set_ylim(0, 10)
@@ -149,8 +158,8 @@ def create_comparison_visualization(dfs: dict):
     sns.set_style("whitegrid")
     sns.set_context("paper", font_scale=0.8)
 
-    methods = ['ml_validator', 'llm_judge', 'human_expert']
-    labels = ['ML Validator', 'LLM Judge', 'Human Expert']
+    methods = ['self_validation', 'llm_judge', 'human_expert']
+    labels = ['Self Validation', 'LLM Judge', 'Human Expert']
     model_names = list(dfs.keys())
     colors = ['#3498db', '#e74c3c']
     width = 0.35

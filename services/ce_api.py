@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 
 from pydantic import BaseModel
 
+from evaluation.evaluate import MangoEvaluator
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -15,19 +17,26 @@ templates = Jinja2Templates(directory="templates")
 static_files = StaticFiles(directory="static")
 
 
-# ---------- async workflow ----------
-async def run_workflow_async(ce, directive_id):
+def _format_exception(exc: Exception) -> str:
+    msg = str(exc).strip()
+    return f"{type(exc).__name__}: {msg}" if msg else f"{type(exc).__name__}: {repr(exc)}"
+
+
+async def run_workflow_async(ce):
     try:
         logger.info("Starting workflow")
+        ce.clear_workflow_error()
 
-        # send directives to MCP
-        await ce.send_directives(ce.directives)
-        logger.info("Directives sent")
+        try:
+            await ce.send_directives(ce.directives)
+            logger.info("Directives sent")
+        except Exception as e:
+            logger.error(f"Failed to send directives: {e}")
+            ce.set_workflow_error(f"Failed to send directives: {e}")
+            return
 
-        # give agents MORE time to start
-        await asyncio.sleep(10)  # Increased from 5 to 10 seconds
+        await asyncio.sleep(10)
 
-        # trigger agents with retry logic
         async with httpx.AsyncClient(timeout=300.0) as client:
             tasks = []
             for agent in ce.agents:
@@ -35,55 +44,73 @@ async def run_workflow_async(ce, directive_id):
                 logger.info(f"Triggering agent {agent.name} at {url}")
                 tasks.append(trigger_agent_with_retry(client, url, agent.name, max_retries=5))
 
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            failures = [_format_exception(result) for result in results if isinstance(result, Exception)]
+            if failures:
+                ce.set_workflow_error("; ".join(failures))
+                logger.error(f"Agent trigger failures: {ce.workflow_error}")
+                return
 
         logger.info("All agents triggered")
 
-    except Exception:
+    except Exception as e:
+        ce.set_workflow_error(f"Workflow execution failed: {e}")
         logger.exception("Workflow execution failed")
 
 
 async def trigger_agent_with_retry(client, url, agent_name, max_retries=5):
-    """Trigger agent with retry on connection errors."""
     for attempt in range(max_retries):
         try:
-            await client.post(url, json={"directive_id": None})
+            response = await client.post(url, json={"directive_id": None})
+            if response.status_code < 200 or response.status_code >= 300:
+                raise RuntimeError(f"{agent_name} returned HTTP {response.status_code}: {response.text}")
             logger.info(f"Successfully connected to {agent_name}")
             return
-        except httpx.ConnectError:
+        except (httpx.ConnectError, RuntimeError) as exc:
             if attempt < max_retries - 1:
                 wait = 2 ** attempt
-                logger.warning(f"Connection to {agent_name} failed, retrying in {wait}s...")
+                logger.warning(f"Connection to {agent_name} failed ({exc}), retrying in {wait}s...")
                 await asyncio.sleep(wait)
             else:
-                logger.error(f"Failed to connect to {agent_name} after {max_retries} attempts")
+                logger.error(f"Failed to connect to {agent_name} after {max_retries} attempts: {exc}")
                 raise
 
 
-# ---------- background wrapper ----------
 def run_workflow_bg(ce):
-    asyncio.run(run_workflow_async(ce, directive_id=None))
+    asyncio.run(run_workflow_async(ce))
 
 
-# ---------- FastAPI app ----------
 def create_ce_app(ce):
     app = FastAPI()
+    app.mount("/static", static_files, name="static")
 
     class TaskRequest(BaseModel):
         task: str
 
-    # ---------- UI ----------
     @app.get("/")
     async def ui(request: Request):
-        app.mount("/static", static_files, name="static")
         return templates.TemplateResponse(request, "index.html")
 
-    # ---------- Orchestrator entry ----------
     @app.post("/run")
     async def run(req: TaskRequest, background: BackgroundTasks):
         logger.info(f"Generating directives for CE task: {req.task}")
+        ce.clear_workflow_error()
 
-        directives = await ce.generate_directives(req.task)
+        try:
+            directives = await ce.generate_directives(req.task)
+        except httpx.ConnectError as e:
+            logger.error(f"LLM connection failed: {e}")
+            return {
+                "status": "error",
+                "error": "LLM service unavailable. Check OLLAMA_URL or ensure Ollama is running.",
+            }
+        except Exception as e:
+            logger.error(f"Failed to generate directives: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to generate directives: {str(e)}",
+            }
+
         ce.update_directives(directives)
 
         if os.getenv("AUTONOMOUS_MODE", "false").lower() != "true":
@@ -102,30 +129,57 @@ def create_ce_app(ce):
             "status": "running",
             "agents": [agent.print_name for agent in ce.agents],
         }
-    
-    # ---------- Approve directives ----------
+
     @app.post("/approve")
     async def approve(background: BackgroundTasks):
         logger.info(f"Running approved directives for CE task")
+        ce.clear_workflow_error()
         background.add_task(run_workflow_bg, ce)
         return {
             "status": "running",
             "agents": [agent.print_name for agent in ce.agents],
         }
     
-    # ---------- Reject directives ----------
     @app.post("/reject")
     async def reject():
         logger.info(f"Cancelling directives for CE task")
         ce.update_directives(None)
+        ce.clear_workflow_error()
         return {
             "status": "rejected",
         }
 
+    class EvaluationRequest(BaseModel):
+        tasks: list[str] | None = None
+        output_filename: str = "results.yaml"
 
-    # ---------- Results polling ----------
+    def run_evaluation_bg(tasks, output_filename):
+        async def _run():
+            evaluator = MangoEvaluator()
+            results = await evaluator.run_evaluation(tasks=tasks, output_filename=output_filename)
+            total = len(results)
+            successful = sum(1 for r in results if any(a.capabilities for a in r.agents))
+            logger.info("Evaluation complete: %s/%s tasks successful", successful, total)
+        asyncio.run(_run())
+
+    @app.post("/evaluate")
+    async def evaluate(req: EvaluationRequest, background: BackgroundTasks):
+        logger.info("Starting evaluation run (output: %s)", req.output_filename)
+        background.add_task(run_evaluation_bg, req.tasks, req.output_filename)
+        return {"status": "running", "output_filename": req.output_filename}
+
+
     @app.get("/results")
     async def results():
-        return await ce.collect_agent_feedback()
+        try:
+            if ce.workflow_error:
+                return {"status": "error", "error": ce.workflow_error}
+            feedback = await ce.collect_agent_feedback()
+            if not feedback:
+                return {"status": "no_results", "agents": []}
+            return feedback
+        except Exception as e:
+            logger.error(f"Error fetching results: {e}")
+            return {"status": "error", "error": "Failed to fetch results"}
 
     return app

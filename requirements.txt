@@ -1,21 +1,23 @@
-# --- DataSets & ML ---
+# DataSets & ML
 numpy
 pandas
 scikit-learn
 kagglehub
 openpyxl
+tabulate
 
-# --- FastAPI & server ---
+# FastAPI & server
 fastapi
 pydantic
 jinja2
 uvicorn[standard]
 
-# --- MCP ---
+# MCP
 fastmcp
 
-# --- LangChain ---
+# LangChain
 langchain
+langchain_experimental
 langchain_mcp_adapters
 langchain_community
 langchain_ollama
@@ -26,11 +28,11 @@ sentence-transformers
 unstructured[md]
 faiss-cpu
 
-# --- Torch (CPU only) ---
+# Torch (CPU only)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
 
-# --- Visualization ---
+# Visualization
 matplotlib
 seaborn

@@ -1,65 +1,21 @@
 common:
   reasoning:
     prompt: >
-        Use the provided data to propose a recommended solution.
-        Recommendation should be brief (2-3 sentences), easy to understand and implement and strongly
-        tied to the data provided. Provide explanation of how you arrived at this recommendation 
-        based on the data analysis in a concise manner (no more than 2-3 sentences).
+      Act as an autonomous domain strategist.
 
-        In addition to your recommendations, generate a small simulated dataset
-        (10 rows) that reflects the expected outcomes of your proposal based on the columns in the data.
-        You MUST generate validation samples that strictly follow the provided 'ALLOWED_FEATURES'.
-        DO NOT INCLUDE any other features into this dataset except the ones stated in 'ALLOWED_FEATURES'.
-        The validation samples should represent the simulated values AFTER applying your recommendation.
-        Each validation sample MUST be a flat JSON object with numeric values only.
+      You reason in cycles. Each cycle you choose one of two actions:
 
-        Return the output as VALID JSON with the following schema:
-        {
-          "recommendation": "...",
-          "explanation": "...",
-          "validation_samples": [
-            { "<feature_1>": value, "<feature_2>": value, ... }
-          ]
-        }
+      - action: query — ask a natural language question about the dataframe to gather evidence.
+        Use this when you need more data before committing to a recommendation.
 
-judge:
-  provider: openai
-  model: "gpt-5-mini"
-  prompt: |
-    You are evaluating a managerial AI recommendation.
+      - action: validate — provide your full recommendation text.
+        The system will verify it against the dataframe and return pass/fail with evidence.
+        If validation fails, you will receive feedback and must refine.
 
-    Score each criterion on a scale of 1–10 (1 = very poor, 10 = excellent).
+      Always query the dataframe at least once before validating.
+      Base your recommendation on observed data patterns, not assumptions.
 
-    Evaluation Criteria:
-
-    1. Strategic Alignment –
-       Does the recommendation directly address the stated managerial objective (TASK)?
-
-    2. Logical Coherence –
-       Is the reasoning internally consistent and supported by the provided data (DATA)?
-
-    3. Constraint Awareness –
-       Does the explanation explicitly consider the stated constraints (CONSTRAINTS)?
-
-    4. Clarity and Actionability –
-       Is the recommendation concise, clear, and practically implementable?
-
-    TASK:
-    {task}
-
-    CONSTRAINTS:
-    {constraints}
-
-    DATA SUMMARY:
-    {data_summary}
-
-    RECOMMENDATION:
-    {recommendation}
-
-    EXPLANATION:
-    {explanation}
-
-    Return ONLY valid JSON using the predefined schema.
+      Final output fields: recommendation, explanation, next_steps.
 
 agents:
   - name: CentralExecutive
@@ -83,14 +39,13 @@ agents:
 
 
   - name: BusinessAgent
+    enabled: true
     role: business_strategy
     avatar: 👨🏻‍💼
     host: business-agent
     port-env: BUSINESS_AGENT_PORT
 
     data_source:
-      download_from: shwetasingh1705/ibm-financial-data-2009-2023
-      data_file: income_statement_IBM.csv
       target_file: data_sources/business.csv
 
     capabilities:
@@ -116,14 +71,13 @@ agents:
         pass_condition: ">= MEAN"
 
   - name: CustomerServiceAgent
+    enabled: true
     role: customer_service
     avatar: 🙋🏻‍♂️
     host: customers-agent
     port-env: CUSTOMERS_AGENT_PORT
 
     data_source:
-      download_from: avabang/ibm-merged-data
-      data_file: df_merged.csv
       target_file: data_sources/customers.csv
 
     capabilities:
@@ -149,14 +103,13 @@ agents:
 
 
   - name: HRAgent
+    enabled: true
     role: human_resources
     avatar: 👩‍💼
     host: hr-agent
     port-env: HR_AGENT_PORT
 
     data_source:
-      download_from: sircarlos/ibm-hr-data
-      data_file: "IBM HR Data.csv"
       target_file: data_sources/hr.csv
 
     capabilities:

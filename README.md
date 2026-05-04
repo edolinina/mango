@@ -2,9 +2,9 @@
 
 ## Overview
 
-Modern large-scale organizations continue to operate with hierarchical structures and management layers that have remained largely unchanged for decades, despite rapid advances in artificial intelligence. While many technology-driven companies have successfully integrated AI tools to support engineers and knowledge workers—primarily to accelerate coding, documentation, and analysis—these capabilities rarely extend into managerial and executive decision-making layers. As a result, strategic planning, coordination, and organizational control still rely heavily on human-centric processes that struggle to scale, adapt, and incorporate the full breadth of available data.
+Modern large-scale organizations continue to operate with hierarchical structures and management layers that have remained largely unchanged for decades, despite rapid advances in artificial intelligence. While many technology-driven companies have successfully integrated AI tools to support engineers and knowledge workers—primarily to accelerate coding, documentation, and analysis—these capabilities rarely extend into managerial and executive decision-making layers.
 
-**MANGO** (Managerial Agentic Network for General Orchestration) is a research framework that explores the possibility of AI systems assuming part of the managerial workload. It investigates if agentic AI architectures capable of supporting distributed, context-aware, and collaborative managerial decision-making, with the potential to reduce reliance on rigid organizational hierarchies and improve responsiveness in complex, data-rich enterprise environments.
+**MANGO** (Managerial Agentic Network for General Orchestration) is a research framework that explores the possibility of AI systems assuming part of the managerial workload. It investigates agentic AI architectures capable of supporting distributed, context-aware, and collaborative managerial decision-making.
 
 ---
 
@@ -12,30 +12,32 @@ Modern large-scale organizations continue to operate with hierarchical structure
 
 - **Agentic Orchestration:** Coordinates multiple specialized AI agents, each with distinct capabilities and roles, to collaboratively solve complex tasks.
 - **Central Executive (CE):** Receives high-level tasks, generates structured directives, and orchestrates the workflow by delegating subtasks to appropriate agents.
-- **Directive Management:** Each task is assigned a unique `directive_id`, ensuring agent feedback and results are correctly matched to the originating directive.
+- **3-Node Reasoning Graph:** Each agent reasons via a `reason → pandas_query → validate` LangGraph cycle, grounding recommendations in real dataframe evidence before finalising.
+- **Directive Management:** Each task is assigned a unique `task_id`, ensuring agent feedback and results are correctly matched to the originating directive.
 - **Approval Workflow:** Supports both autonomous and human-in-the-loop modes. In non-autonomous mode, the system pauses after directive generation and presents the user with a summary for approval or rejection before proceeding.
-- **Agent Feedback Collection:** Aggregates feedback from agents, filtered by `directive_id`, and presents results in a user-friendly UI.
+- **Knowledge-Augmented Reasoning:** Domain knowledge from `knowledge_base/*.md` is retrieved via FAISS + HuggingFace embeddings and injected into every agent reasoning cycle.
 - **Extensible Agent Design:** Agents can be easily added or configured with different capabilities, roles, and data access.
 
 ---
 
 ## System Architecture
 
-- **Backend:**  
+- **Backend:**
   - Built with FastAPI.
-  - Central Executive logic in `central_executive.py`.
-  - Asynchronous workflow management and agent communication.
+  - Central Executive logic in `agents/central_executive.py`.
+  - Per-agent reasoning in `agents/worker_network.py` (LangGraph `StateGraph`).
+  - Message-passing via FastMCP (`services/mcp_server.py`).
   - REST API endpoints for task submission, approval, rejection, and results polling.
 
-- **Frontend:**  
-  - Lightweight JavaScript UI (`static/js/app.js`).
-  - Real-time feedback and agent status visualization.
-  - Modal dialogs for human approval and result inspection.
+- **Frontend:**
+  - React JSX UI (`static/js/app.js`), transpiled in-browser via Babel Standalone — no build step required.
+  - Business-oriented design with real-time agent status cards.
+  - Modal dialogs for human approval and per-agent result inspection.
 
-- **Agents:**  
-  - Modular, capability-driven agents.
-  - Communicate via HTTP and a message-passing protocol.
-  - Each agent processes directives and returns structured feedback.
+- **Agents:**
+  - Modular, capability-driven agents (`BusinessAgent`, `CustomerServiceAgent`, `HRAgent`).
+  - Communicate via HTTP and the MCP message-passing protocol.
+  - Each agent processes directives through a 3-node reasoning graph and returns structured feedback.
 
 ---
 
@@ -43,61 +45,59 @@ Modern large-scale organizations continue to operate with hierarchical structure
 
 MANGO supports both cloud-based and local language models:
 
-- **OpenAI:**  
-  To use OpenAI models, set `LLM_PROVIDER=openai` in your `.env` file and provide your OpenAI API key as the environment variable `OPENAI_API_KEY`.
+- **OpenAI:**
+  Set `LLM_PROVIDER=openai` and provide `OPENAI_API_KEY` in your `.env` file.
 
-- **Ollama (Local LLM):**  
-  To use a local LLM via [Ollama](https://ollama.com/), set `LLM_PROVIDER=ollama` and configure the `OLLAMA_URL` and `LLM_MODEL` variables in your `.env` file.
-
-You can switch between providers by changing the `LLM_PROVIDER` value in `.env`:
+- **Ollama (Local LLM):**
+  Set `LLM_PROVIDER=ollama` and configure `OLLAMA_URL` and `LLM_MODEL` in `.env`.
 
 ```dotenv
 LLM_PROVIDER=ollama   # or 'openai'
 ```
 
-All relevant configuration options are managed in the `.env` file.
-
 ---
 
 ## Configuration
 
-- All configuration and startup variables are stored in the `.env` file at the project root.
-- Edit this file to set environment variables as needed for your deployment.
-- Example variables include agent ports, LLM provider/model, and autonomous mode.
+All configuration is stored in `.env` at the project root. Key variables:
+
+```dotenv
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3
+LLM_TEMPERATURE=0.2
+OLLAMA_URL=http://localhost:11434
+OPENAI_API_KEY=                        # required if LLM_PROVIDER=openai
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+AUTONOMOUS_MODE=false
+MCP_PORT=8001
+CE_PORT=8000
+BUSINESS_AGENT_PORT=8010
+CUSTOMERS_AGENT_PORT=8011
+HR_AGENT_PORT=8012
+```
 
 **Execution Modes:**
 
-- `AUTONOMOUS_MODE=true`: MANGO runs fully automated, executing directives and triggering agents without user intervention.
-- `AUTONOMOUS_MODE=false`: Human-In-The-Loop (HITL) mode. The system pauses for user approval after directive generation before proceeding.
+- `AUTONOMOUS_MODE=true`: Fully automated — directives are executed immediately without user review.
+- `AUTONOMOUS_MODE=false`: Human-in-the-loop mode — the system pauses for approval after directive generation.
 
 ---
 
 ## Deployment & Usage
 
-MANGO is containerized for easy deployment using Docker Compose.
+MANGO is containerised for easy deployment using Docker Compose.
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) must be installed and running on your system.
-
-### Configuration
-
-- All configuration and startup variables are stored in the `.env` file at the project root.
-- Edit this file to set environment variables as needed for your deployment.
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed and running.
 
 ### Starting MANGO
-
-From the project root directory, run:
 
 ```bash
 ./start_mango.sh
 ```
 
-This script will use `docker-compose.yml` to build and start all required services.
-
 ### Stopping MANGO
-
-To stop all running containers, use:
 
 ```bash
 docker-compose down
@@ -105,58 +105,48 @@ docker-compose down
 
 ### Accessing the UI
 
-Open your browser and navigate to [http://localhost:8000](http://localhost:8000).
+Open [http://localhost:8000](http://localhost:8000).
 
 ### Submitting a Task
 
-- Enter a high-level task in the input field and click **Run**.
-- In non-autonomous mode, review the generated directives and approve or reject the plan.
-- Upon approval, agents are triggered and results are collected and displayed.
+1. Enter a high-level business objective in the input field and click **Run**.
+2. In non-autonomous mode, review the generated directives and **Approve & Run** or **Reject**.
+3. Upon approval, agents are triggered in parallel and results appear as each agent completes.
+4. Click an agent card to inspect its recommendation, explanation, next steps, and validation result.
 
 ---
 
 ## API Endpoints
 
-- `POST /run`  
-  Submit a new task. Returns agent list and status. In non-autonomous mode, returns status "pending" and directives for approval.
-
-- `POST /approve`  
-  Approve the generated directives and start agent execution.
-
-- `POST /reject`  
-  Reject the generated directives and cancel the workflow.
-
-- `GET /results?directive_id=...`  
-  Poll for agent feedback/results for a specific directive.
-
-- `POST /results/clear?directive_id=...`  
-  Clear cached results for a specific directive.
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/run` | Submit a task. Returns agent list and status (`running` or `pending` for approval). |
+| `POST` | `/approve` | Approve generated directives and start agent execution. |
+| `POST` | `/reject` | Reject directives and cancel the workflow. |
+| `GET`  | `/results` | Poll for aggregated agent feedback and results. |
 
 ---
 
-## Result Evaluation
+## Agent Reasoning — 3-Node Graph
 
-MANGO includes automated evaluation of agent outputs using statistical and machine learning techniques.  
-When a directive specifies validation requirements, the agent network:
+Each agent processes a directive through a `StateGraph` with three nodes:
 
-- Trains a validation model (regression or classification) on provided data using scikit-learn.
-- Applies constraints and pass conditions (e.g., thresholds, expected values) to agent recommendations.
-- Samples agent outputs and validates them against the trained model and specified conditions.
-- Reports the number of passed and failed validation samples for each agent's recommendation.
+1. **`reason`** — LLM decides the next action: `query` (need more data) or `validate` (ready to recommend). Forces validation after a maximum of 5 iterations.
+2. **`pandas_query`** — Runs `create_pandas_dataframe_agent` to answer the natural language question against the agent's CSV dataset. Appends results to state, then returns to `reason`.
+3. **`validate`** — Runs the pandas agent again for evidence, then asks an LLM to score the recommendation as `pass` or `fail`. On pass, builds the final `Recommendation`. On fail, returns feedback to `reason` for refinement (max 2 validation attempts).
 
-This ensures that agentic decisions are not only generated but also quantitatively assessed for reliability and correctness before being presented or acted upon.
+Final output: `recommendation`, `explanation`, `next_steps`.
 
 ---
 
 ## Research Goals
 
-MANGO is designed to answer the question:  
-**Can AI systems be designed to assume part of the managerial workload and enable more adaptive, flatter organizational structures?**
+MANGO explores: **Can AI systems assume part of the managerial workload and enable more adaptive, flatter organisational structures?**
 
 By orchestrating distributed, context-aware, and collaborative AI agents, MANGO aims to:
 
 - Reduce reliance on rigid hierarchies.
-- Improve organizational responsiveness.
+- Improve organisational responsiveness.
 - Enable scalable, data-driven decision-making.
 
 ---
@@ -164,9 +154,3 @@ By orchestrating distributed, context-aware, and collaborative AI agents, MANGO 
 ## License
 
 This project is for research and prototyping purposes. See `LICENSE` for details.
-
----
-
-## Acknowledgments
-
-MANGO builds on modern AI, agentic architectures, and orchestration patterns to push the boundaries of AI-assisted management and organizational design.

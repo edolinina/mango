@@ -1,253 +1,448 @@
-const spinner = document.getElementById("spinner");
-const output = document.getElementById("output");
-const agentsEl = document.getElementById("agents");
-const taskEl = document.getElementById("task");
-const runBtn = document.getElementById("runBtn");
+const { useState, useEffect, useRef } = React;
 
-let poller = null;
-let expectedAgents = [];
-let finishedAgents = new Set();
-
-async function run() {
-  const task = taskEl.value.trim();
-  if (!task) return;
-
-  runBtn.disabled = true;
-  runBtn.style.display = "none";
-  spinner.style.display = "block";
-  agentsEl.innerHTML = "";
-  output.innerHTML = "";
-  finishedAgents.clear();
-
-  const res = await fetch("/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task })
-  });
-
-  const data = await res.json();
-
-  // --- Approval modal if status is pending ---
-  if (data.status === "pending") {
-    showApprovalModal(async (approved) => {
-      if (approved) {
-        const approveRes = await fetch("/approve", { method: "POST" });
-        const approveData = await approveRes.json();
-        setTimeout(() => handleRunContinue(approveData), 0);
-      } else {
-        await fetch("/reject", { method: "POST" });
-        spinner.style.display = "none";
-        runBtn.disabled = false;
-        runBtn.style.display = "";
-      }
-    }, data.directives);
-    return;
-  }
-
-  handleRunContinue(data);
-}
-
-function handleRunContinue(data) {
-  // ---- render agents (initial, spinning)
-  if (data.agents) {
-    expectedAgents = data.agents.slice();
-
-    agentsEl.innerHTML = `
-      <div class="agents-list">
-        ${expectedAgents.map(a => agentBox(a, true)).join("")}
-      </div>
-    `;
-    spinner.style.display = "none";
-  }
-
-  if (poller) clearInterval(poller);
-  poller = setInterval(fetchResults, 5000);
-  fetchResults();
-}
-
-async function fetchResults() {
-  const res = await fetch("/results");
-  const data = await res.json();
-
-  if (!data || Object.keys(data).length === 0) return;
-
-  renderResults(data);
-}
-
-function renderResults(results) {
-  output.innerHTML = "";
-
-  const agents = Array.isArray(results)
-    ? results
-    : Object.entries(results).map(([agent, reports]) => ({ agent, reports }));
-
-  agents.forEach(a => finishedAgents.add(cleanName(a.agent)));
-
-  const allFinished = finishedAgents.size === expectedAgents.length;
-
-  // Map agent labels to their results for quick lookup
-  const agentResultsMap = {};
-  agents.forEach(agentObj => {
-    let label = agentObj.agent.replace(/Agent\b.*$/,"").replace(/\p{Extended_Pictographic}/gu,"").trim().split(" ")[0];
-    agentResultsMap[label] = agentObj;
-  });
-
-  // Render agent icons with click handlers
-  agentsEl.innerHTML = `
-    <div class="agents-list">
-      ${expectedAgents.map(name => {
-        let label = name.replace(/Agent\b.*$/,"").replace(/\p{Extended_Pictographic}/gu,"").trim().split(" ")[0];
-        let spinning = !finishedAgents.has(label);
-        // Add data-label for click handler
-        return `
-          <div class="agent-box-wrapper" data-label="${label}" style="display:inline-block;cursor:${spinning ? 'default' : 'pointer'};">
-            ${agentBox(name, spinning)}
-          </div>
-        `;
-      }).join("")}
-    </div>
-    ${
-      allFinished
-        ? `<div class="done">✅ All agents finished<br><span class="done-instruction">Click an agent icon to view its results.</span></div>`
-        : ""
-    }
-  `;
-
-  output.innerHTML = `<div class="agent-results-instructions">Click an agent icon to view its results.</div>`;
-
-  if (!document.getElementById("agentModal")) {
-    const modalDiv = document.createElement("div");
-    modalDiv.id = "agentModal";
-    modalDiv.style.display = "none";
-    modalDiv.innerHTML = `
-      <div id="agentModalBackdrop" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:1000;"></div>
-      <div id="agentModalContent" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 1.5em;z-index:1001;max-width:90vw;max-height:80vh;overflow:auto;border-radius:10px;box-shadow:0 2px 16px #0002;">
-        <button id="agentModalClose" style="position:absolute;top:0.5em;right:0.7em;font-size:1.3em;background:none;border:none;cursor:pointer;">&times;</button>
-        <div id="agentModalBody"></div>
-      </div>
-    `;
-    document.body.appendChild(modalDiv);
-    // Close modal on click
-    document.getElementById("agentModalClose").onclick = hideAgentModal;
-    document.getElementById("agentModalBackdrop").onclick = hideAgentModal;
-  }
-
-  // Attach click handlers to agent icons
-  document.querySelectorAll(".agent-box-wrapper").forEach(el => {
-    const label = el.getAttribute("data-label");
-    if (finishedAgents.has(label)) {
-      el.onclick = () => showAgentModal(label, agentResultsMap[label]);
-    } else {
-      el.onclick = null;
-    }
-  });
-
-  // ---- stop polling when done
-  if (finishedAgents.size === expectedAgents.length) {
-    clearInterval(poller);
-    spinner.style.display = "none";
-    runBtn.disabled = false;
-    runBtn.style.display = "";
-  }
-}
-
-function showAgentModal(label, agentObj) {
-  const modal = document.getElementById("agentModal");
-  const body = document.getElementById("agentModalBody");
-  if (!agentObj) {
-    body.innerHTML = `<div>No results for this agent.</div>`;
-  } else {
-    body.innerHTML = `
-      <h2 style="margin-top:0;">Directives for ${label}</h2>
-      ${agentObj.reports.map(r => {
-        let parsed = {};
-        try { parsed = JSON.parse(r.results); } catch {}
-        return `
-          <div class="cap" style="margin-bottom:1em;padding-bottom:1em;border-bottom:1px solid #eee;">
-            <p><span class="result-label">Capability applied:</span> ${r.capability}</p>
-            ${parsed.recommendation ? `
-              <p><span class="result-label">Recommendation:</span><br>${parsed.recommendation}</p>
-            ` : ""}
-            ${parsed.explanation ? `
-              <p><span class="result-label">Explanation:</span><br>${parsed.explanation}</p>
-            ` : ""}
-            ${r.validation ? `
-              <p><span class="result-label">Validation result:</span> ${r.validation}</p>
-            ` : ""}
-          </div>
-        `;
-      }).join("")}
-    `;
-  }
-  modal.style.display = "block";
-}
-
-function hideAgentModal() {
-  const modal = document.getElementById("agentModal");
-  if (modal) modal.style.display = "none";
-}
-
-// --- Approval Modal Helper ---
-function showApprovalModal(callback, directivesText) {
-  let modal = document.getElementById("approvalModal");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "approvalModal";
-    modal.innerHTML = `
-      <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:2000;"></div>
-      <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:2em 2em;z-index:2001;max-width:90vw;max-height:80vh;overflow:auto;border-radius:10px;box-shadow:0 2px 16px #0002;">
-        <div style="font-size:1.2em;margin-bottom:1em;">
-          Approve this task?
-          ${directivesText ? `<div style="margin-top:1em;white-space:pre-wrap;font-size:0.92em;color:#333;border:1px solid #eee;padding:0.7em;border-radius:6px;background:#fafbfc;">${directivesText}</div>` : ""}
-        </div>
-        <button id="approveBtn" style="margin-right:1em;">Approve</button>
-        <button id="rejectBtn">Reject</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
-  }
-  modal.style.display = "block";
-  modal.querySelector("#approveBtn").onclick = () => {
-    modal.style.display = "none";
-    callback(true);
-  };
-  modal.querySelector("#rejectBtn").onclick = () => {
-    modal.style.display = "none";
-    callback(false);
-  };
-}
-
-// ---------- helpers ----------
 function cleanName(name) {
   return (name || "")
-    .replace(/Agent.*$/,"")
-    .replace(/[\u{1F300}-\u{1FAFF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,"")
+    .replace(/Agent.*$/, "")
+    .replace(/[\u{1F300}-\u{1FAFF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
     .trim()
     .split(" ")[0];
 }
 
 function extractEmoji(str) {
-  // Get the last "word" (could be emoji or text)
-  let parts = str.trim().split(" ");
-  let last = parts[parts.length - 1];
-  // If last contains at least one emoji codepoint, treat as emoji
-  if (/\p{Extended_Pictographic}/u.test(last)) {
-    return last;
-  }
-  return "";
+  const parts = str.trim().split(" ");
+  const last = parts[parts.length - 1];
+  return /\p{Extended_Pictographic}/u.test(last) ? last : "🤖";
 }
 
-function agentBox(name, spinning) {
-  let emoji = extractEmoji(name);
-  if (!emoji) emoji = "🤖";
-  let label = name.replace(/Agent.*$/,"").replace(/\p{Extended_Pictographic}/gu,"").trim().split(" ")[0];
-  return `
-    <div class="agent-box">
-      <div class="agent-circle" style="position:relative;">
-        ${spinning ? '<div class="agent-spinner"></div>' : ''}
-        <span style="position:relative; z-index:2; font-size:1.7em;">${emoji}</span>
-      </div>
-      <div class="agent-label">${label}</div>
-    </div>
-  `;
+function mlValidationBadgeClass(status) {
+  if (status === "success") return "pass";
+  if (status === "partial_pass") return "partial";
+  return "fail";
 }
+
+function mlValidationLabel(status) {
+  if (status === "success") return "✓ Success";
+  if (status === "partial_pass") return "~ Partial Pass";
+  return "✗ Fail";
+}
+
+function AgentCard({ name, spinning, onClick }) {
+  const emoji = extractEmoji(name);
+  const label = cleanName(name);
+  return (
+    <div className={`agent-card ${spinning ? "" : "ready"}`} onClick={!spinning ? onClick : undefined}>
+      <div className="agent-avatar">
+        <div className="emoji">{emoji}</div>
+        {spinning && <div className="ring" />}
+      </div>
+      <div className="agent-info">
+        <div className="name">{label}</div>
+        <div className="agent-meta-row">
+          <span className={`status-tag ${spinning ? "running" : "done"}`}>
+            {spinning ? "Running" : "Complete"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AgentModal({ label, agentObj, onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{extractEmoji(agentObj?.agent || "")} {label} — Results</h2>
+          <button className="modal-close" onClick={onClose}>&times;</button>
+        </div>
+        <div className="modal-body">
+          {agentObj ? agentObj.reports.map((r, i) => {
+            let parsed = {};
+            try { parsed = JSON.parse(r.results); } catch(e) {}
+            return (
+              <div key={i} className="directive-block">
+                <div className="cap-label">{r.capability}</div>
+                {parsed.recommendation && (
+                  <div className="field">
+                    <div className="field-key">Recommendation</div>
+                    <div className="field-val">{parsed.recommendation}</div>
+                  </div>
+                )}
+                {parsed.explanation && (
+                  <div className="field">
+                    <div className="field-key">Explanation</div>
+                    <div className="field-val">{parsed.explanation}</div>
+                  </div>
+                )}
+                {parsed.next_steps && parsed.next_steps.length > 0 && (
+                  <div className="field">
+                    <div className="field-key">Next Steps</div>
+                    <div className="field-val">
+                      <ol style={{ paddingLeft: "1.2em", margin: 0 }}>
+                        {parsed.next_steps.map((s, j) => <li key={j}>{s}</li>)}
+                      </ol>
+                    </div>
+                  </div>
+                )}
+                {parsed.self_validation && (
+                  <div className="field">
+                    <div className="field-key">Self Validation</div>
+                    <span className={`validation-badge ${parsed.self_validation.status === "pass" ? "pass" : "fail"}`}>
+                      {parsed.self_validation.status === "pass" ? "✓ Pass" : "✗ Fail"}
+                    </span>
+                  </div>
+                )}
+                {parsed.iterations != null && (
+                  <div className="field">
+                    <div className="field-key">Iterations</div>
+                    <div className="field-val">{parsed.iterations}</div>
+                  </div>
+                )}
+                {parsed.ml_validation && (
+                  <div className="field">
+                    <div className="field-key">ML Validation</div>
+                    {parsed.ml_validation.status === "error" ? (
+                      <span className="validation-badge fail" title={parsed.ml_validation.error}>⚠ Unavailable</span>
+                    ) : (
+                      <div className="validation-ml-row">
+                        <span className={`validation-badge ${mlValidationBadgeClass(parsed.ml_validation.status)}`}>
+                          {mlValidationLabel(parsed.ml_validation.status)}
+                        </span>
+                        <span className="validation-ml-stats">
+                          {parsed.ml_validation.pass_rate}% pass rate · {parsed.ml_validation.passed}/{parsed.ml_validation.total} samples
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          }) : <p style={{ color: "var(--text-muted)" }}>No results available.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApprovalModal({ directivesText, onApprove, onReject }) {
+  return (
+    <div className="modal-backdrop">
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Review &amp; Approve Task</h2>
+        </div>
+        <div className="approval-body">
+          <p>The Central Executive has generated the following directives. Review and approve to continue, or reject to cancel.</p>
+          {directivesText && (
+            <div className="directives-preview">{directivesText}</div>
+          )}
+          <div className="approval-actions">
+            <button className="btn btn-ghost" onClick={onReject}>Reject</button>
+            <button className="btn btn-success" onClick={onApprove}>Approve &amp; Run</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [task, setTask] = useState("");
+  const [phase, setPhase] = useState("idle");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [pendingDirectives, setPendingDirectives] = useState(null);
+  const [expectedAgents, setExpectedAgents] = useState([]);
+  const [finishedAgents, setFinishedAgents] = useState(new Set());
+  const [agentResultsMap, setAgentResultsMap] = useState({});
+  const [selectedAgent, setSelectedAgent] = useState(null);
+  const pollerRef = useRef(null);
+  const expectedLabelsRef = useRef([]);
+
+  const expectedLabels = expectedAgents.map((name) => cleanName(name));
+  const allFinished = expectedLabels.length > 0 && expectedLabels.every((label) => finishedAgents.has(label));
+
+  useEffect(() => {
+    if (allFinished && pollerRef.current) {
+      clearInterval(pollerRef.current);
+      pollerRef.current = null;
+      setPhase("done");
+      setStatusMsg("");
+    }
+  }, [allFinished]);
+
+  async function handleRun() {
+    if (!task.trim()) return;
+    setPhase("running");
+    setStatusMsg("Generating directives…");
+    setErrorMsg("");
+    setExpectedAgents([]);
+    expectedLabelsRef.current = [];
+    setFinishedAgents(new Set());
+    setAgentResultsMap({});
+
+    const res = await fetch("/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task }),
+    });
+    const data = await res.json();
+
+    if (data.status === "error") {
+      setPhase("idle");
+      setStatusMsg("");
+      setErrorMsg(data.error || "Failed to start workflow.");
+      return;
+    }
+
+    if (data.status === "pending") {
+      setPendingDirectives(data.directives);
+      setPhase("approval");
+      setStatusMsg("");
+      return;
+    }
+
+    startPolling(data);
+  }
+
+  async function handleApprove() {
+    setPhase("running");
+    setStatusMsg("Dispatching to agents…");
+    setErrorMsg("");
+    setPendingDirectives(null);
+    const res = await fetch("/approve", { method: "POST" });
+    const data = await res.json();
+
+    if (data.status === "error") {
+      setPhase("idle");
+      setStatusMsg("");
+      setErrorMsg(data.error || "Failed to approve workflow.");
+      return;
+    }
+
+    startPolling(data);
+  }
+
+  async function handleReject() {
+    await fetch("/reject", { method: "POST" });
+    setPhase("idle");
+    setStatusMsg("");
+    setErrorMsg("");
+    setPendingDirectives(null);
+    expectedLabelsRef.current = [];
+  }
+
+  function startPolling(data) {
+    if (data.agents) {
+      const nextAgents = data.agents.slice();
+      setExpectedAgents(nextAgents);
+      expectedLabelsRef.current = nextAgents.map((name) => cleanName(name));
+    }
+    setStatusMsg("Agents are working…");
+    if (pollerRef.current) clearInterval(pollerRef.current);
+    pollerRef.current = setInterval(fetchResults, 5000);
+    fetchResults();
+  }
+
+  async function fetchResults() {
+    const res = await fetch("/results");
+    const data = await res.json();
+    if (!data) return;
+
+    if (!Array.isArray(data) && typeof data === "object" && data.status === "error") {
+      if (pollerRef.current) {
+        clearInterval(pollerRef.current);
+        pollerRef.current = null;
+      }
+      setPhase("idle");
+      setStatusMsg("");
+      setErrorMsg(data.error || "Workflow failed.");
+      return;
+    }
+
+    // Ignore other control/status payloads from the API.
+    if (!Array.isArray(data) && typeof data === "object" && (data.status || data.error)) {
+      return;
+    }
+
+    if (!Array.isArray(data) && Object.keys(data).length === 0) return;
+
+    const agents = Array.isArray(data)
+      ? data
+      : Object.entries(data).map(([agent, reports]) => ({ agent, reports }));
+
+    // Only count agents that are part of this run.
+    const expectedSet = new Set(expectedLabelsRef.current);
+    const relevantAgents = agents.filter((a) => expectedSet.has(cleanName(a.agent)));
+
+    if (relevantAgents.length === 0) return;
+
+    const newMap = {};
+    relevantAgents.forEach(agentObj => { newMap[cleanName(agentObj.agent)] = agentObj; });
+
+    setAgentResultsMap(prev => ({ ...prev, ...newMap }));
+    setFinishedAgents(prev => {
+      const next = new Set(prev);
+      relevantAgents.forEach(a => next.add(cleanName(a.agent)));
+      return next;
+    });
+  }
+
+  const busy = phase === "running" || phase === "approval";
+
+  return (
+    <>
+      <header className="app-topbar">
+        <div className="app-topbar-inner">
+          <div className="brand-lockup">
+            <span className="logo">🥭</span>
+            <div>
+              <div className="eyebrow">Executive Workspace</div>
+              <h1 className="app-topbar-title">MANGO Operator</h1>
+              <div className="subtitle">Multi-agent orchestration for business decisions</div>
+            </div>
+          </div>
+          <div className="app-nav-actions">
+            <div className="count-pill">{expectedAgents.length || 0} agents</div>
+          </div>
+        </div>
+      </header>
+
+      <main className="app-shell">
+        <section className="panel hero-panel">
+          <div className="hero">
+            <p className="eyebrow">Operational Brief</p>
+            <h1>Set one clear business goal.</h1>
+            <p className="hero-copy">
+              Submit one decision objective, dispatch the executive plan, and review each agent's
+              recommendation in a single workspace.
+            </p>
+          </div>
+          <div className="hero-stats">
+            <div>
+              <span className="summary-label">Workflow state</span>
+              <strong>{phase === "idle" ? "Ready" : phase === "approval" ? "Waiting for approval" : phase === "done" ? "Completed" : "In progress"}</strong>
+            </div>
+            <div>
+              <span className="summary-label">Completed agents</span>
+              <strong>{finishedAgents.size} / {expectedAgents.length || 0}</strong>
+            </div>
+          </div>
+        </section>
+
+        <div className="workspace-grid">
+          <div className="workspace-column">
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Task Input</p>
+                  <h2>Define the objective</h2>
+                </div>
+              </div>
+
+              <label className="field">
+                <span>Business objective</span>
+                <textarea
+                  value={task}
+                  onChange={e => setTask(e.target.value)}
+                  placeholder="Describe the business objective you want agents to work on…"
+                  disabled={busy}
+                />
+              </label>
+
+              <p className="field-help">
+                Be specific about the outcome you want balanced across profitability, customers, and workforce.
+              </p>
+
+              <div className="action-strip">
+                <div className="action-controls-inline">
+                  <button className="btn primary-button run-button" onClick={handleRun} disabled={busy || !task.trim()}>
+                    {phase === "running" ? "Running…" : "Run task"}
+                  </button>
+                </div>
+              </div>
+
+              {errorMsg && <p className="field-error">{errorMsg}</p>}
+
+            </section>
+          </div>
+
+          <div className="workspace-column">
+            <section className="panel results-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Execution</p>
+                  <h2>Agent progress</h2>
+                </div>
+                <div className="count-pill">{finishedAgents.size} complete</div>
+              </div>
+
+              <div className="results-summary">
+                <div>
+                  <span className="summary-label">Expected</span>
+                  <strong>{expectedAgents.length || 0}</strong>
+                </div>
+                <div>
+                  <span className="summary-label">Finished</span>
+                  <strong>{finishedAgents.size}</strong>
+                </div>
+                <div>
+                  <span className="summary-label">Status</span>
+                  <strong>{allFinished ? "Ready to review" : expectedAgents.length ? "Running" : "Waiting"}</strong>
+                </div>
+              </div>
+
+              {expectedAgents.length > 0 ? (
+                <>
+                  <div className="section-title">Agents</div>
+                  <div className="agents-grid">
+                    {expectedAgents.map(name => {
+                      const label = cleanName(name);
+                      return (
+                        <AgentCard
+                          key={name}
+                          name={name}
+                          spinning={!finishedAgents.has(label)}
+                          onClick={() => setSelectedAgent(label)}
+                        />
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="empty-state">
+                  Agents will appear here after the Central Executive generates a plan.
+                </div>
+              )}
+
+              {allFinished && (
+                <div className="done-banner">
+                  <span>✓</span>
+                  <span>All agents completed. Select any card to inspect the detailed recommendation.</span>
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+      </main>
+
+      {selectedAgent && (
+        <AgentModal
+          label={selectedAgent}
+          agentObj={agentResultsMap[selectedAgent]}
+          onClose={() => setSelectedAgent(null)}
+        />
+      )}
+
+      {phase === "approval" && (
+        <ApprovalModal
+          directivesText={pendingDirectives}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);

@@ -11,6 +11,8 @@ def create_agent_app(agent):
     @app.post("/process-directive")
     async def process_directive():
         reports = await agent.process_agent_directive()
+        if not reports:
+            return {"agent": agent.print_name, "reports": []}
 
         for report in reports:
             results = json.loads(report.results)

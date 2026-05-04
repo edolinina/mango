@@ -21,4 +21,4 @@ CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${SERVICE_PORT}"]
 
 # ---------- MCP ----------
 FROM mango-base AS mango-mcp
-CMD ["python", "mcp_server/server.py"]
+CMD ["python", "services/mcp_server.py"]

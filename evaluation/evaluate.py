@@ -1,49 +1,96 @@
-import json
 import asyncio
-import yaml
+import json
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+
+import yaml
 from dotenv import load_dotenv
-import argparse
 from filelock import FileLock
+from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-import os
 os.chdir(str(ROOT))
 
-from dotenv import load_dotenv
 load_dotenv()
 
-# Override paths and hosts for local execution
 os.environ["MCP_HOST"] = "localhost"
-# Disabling parallelism to avoid deadlocks with tokenizers in multi-threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-# Use absolute path to models directory
 os.environ["TRAINED_MODELS_PATH"] = str(Path(__file__).parent / "../models")
 
-from agents.central_executive import CentralExecutive
+from agents.central_executive import CEOutput, CentralExecutive
 from agents.worker_agent import WorkerAgent
-from utils.helpers import *
+from utils.helpers import (
+    bold_str,
+    get_mcp_client,
+    is_agent_enabled,
+    load_config,
+    load_model,
+    setup_logger,
+)
 from utils.knowledge import get_knowledge_retriever
 
 logger = setup_logger()
 
-# List of evaluation tasks
 EVALUATION_TASKS = [
-    "Increase net income while reducing customer churn",
-    "Increase profitability while maintaining strong workforce performance",
-    "Reduce customer churn while maintaining high employee performance",
-    "Increase net income without increasing customer churn",
-    "Improve workforce performance while increasing customer loyalty",
-    "Increase profitability while reducing customer complaints and support issues",
-    "Improve customer loyalty while maintaining strong business profitability",
-    "Increase employee performance while reducing customer churn risk",
-    "Improve profitability while keeping both customer loyalty and workforce performance stable",
-    "Achieve balanced improvement in net income, customer loyalty, and workforce performance"
+    "Increase net income by improving operating efficiency and protecting gross profit.",
+    "Reduce customer churn by improving retention drivers such as support, security, and referrals.",
+    "Improve workforce performance through training, work-life balance, and manager stability.",
+    "Increase profitability while keeping customer churn low and employee performance strong.",
+    "Improve customer loyalty without sacrificing business profitability.",
+    "Raise employee performance while minimizing customer churn risk.",
+    "Improve profitability while keeping both customer loyalty and workforce performance stable.",
+    "Increase net income without weakening customer retention or employee performance.",
+    "Strengthen customer loyalty for high-tenure customers while maintaining healthy margins.",
+    "Achieve balanced improvement in profitability, customer loyalty, and workforce performance.",
 ]
+
+
+class EvaluationCapabilityResult(BaseModel):
+    capability: str
+    agent_task: str = ""
+    iterations: int = 0
+    ml_validation: dict[str, Any] = Field(default_factory=dict)
+    recommendation: str = ""
+    explanation: str = ""
+    next_steps: list[str] = Field(default_factory=list)
+
+
+class EvaluationAgentResult(BaseModel):
+    agent: str
+    status: str = "completed"
+    capabilities: list[EvaluationCapabilityResult] = Field(default_factory=list)
+
+
+class EvaluationTaskResult(BaseModel):
+    query: str
+    task_id: str = ""
+    created: str = Field(default_factory=lambda: datetime.now().isoformat())
+    agents: list[EvaluationAgentResult] = Field(default_factory=list)
+
+
+def _capability_name(report_capability: str) -> str:
+    if not report_capability:
+        return ""
+    parts = report_capability.rsplit(" ", 1)
+    return parts[0] if len(parts) == 2 else report_capability
+
+
+def _load_results(output_file: Path) -> list[EvaluationTaskResult]:
+    if not output_file.exists():
+        return []
+    with open(output_file, "r") as rf:
+        data = yaml.safe_load(rf) or []
+    return [EvaluationTaskResult.model_validate(item) for item in data]
+
+
+def _write_results(output_file: Path, results: list[EvaluationTaskResult]) -> None:
+    with open(output_file, "w") as wf:
+        yaml.dump([r.model_dump(mode="json") for r in results], wf, default_flow_style=False, sort_keys=False)
+
 
 class MangoEvaluator:
     def __init__(self):
@@ -53,178 +100,111 @@ class MangoEvaluator:
         self.llm_prompt = config["common"]["reasoning"]["prompt"]
         self.model = load_model()
         self.knowledge_retriever = get_knowledge_retriever()
-        
-        self.agents = [WorkerAgent(a, self.model, self.mcp_client, self.knowledge_retriever) \
-            for a in self.config if a["name"] != "CentralExecutive"]
-        
-        ce_config = [a for a in self.config if a["name"] == "CentralExecutive"][0]
+
+        self.agents = [
+            WorkerAgent(agent_cfg, self.model, self.mcp_client, self.knowledge_retriever)
+            for agent_cfg in self.config
+            if agent_cfg["name"] != "CentralExecutive" and is_agent_enabled(agent_cfg)
+        ]
+        ce_config = next(agent_cfg for agent_cfg in self.config if agent_cfg["name"] == "CentralExecutive")
         self.ce = CentralExecutive(self.model, self.mcp_client, ce_config, self.agents)
-        
-        agents_list = ", ".join([a.print_name for a in self.agents])
-        logger.info(f"Initialized 🥭 MangoEvaluator with agents: {agents_list}")
 
-    async def evaluate_task(self, task):
-        """Evaluate a single task and return structured results."""
-        logger.info(f"\n{'='*80}\nEvaluating task: {task}\n{'='*80}")
-        
-        task_result = {
-            "task": task,
-            "timestamp": datetime.now().isoformat(),
-            "agents": []
-        }
-        
-        ce_output = await self.ce.generate_directives(task)
-        logger.info(f"Directives generated by {self.ce.name}")
+        logger.info(
+            "Initialized MangoEvaluator with agents: %s",
+            ", ".join(agent.print_name for agent in self.agents),
+        )
+
+    async def evaluate_task(self, query: str) -> EvaluationTaskResult:
+        logger.info("\n%s\nEvaluating task: %s\n%s", "=" * 80, query, "=" * 80)
+
+        ce_output: CEOutput = await self.ce.generate_directives(query)
+        logger.info("Directives generated by %s", self.ce.name)
         await self.ce.send_directives(ce_output)
+        logger.info("Waiting for agents to process directives...")
 
-        logger.info(f"Waiting for agents to process directives...")
-        
-        # Configure agents and collect their tasks
-        agents_tasks = []
+        directive_task_lookup = {
+            (directive.agent, directive.capability): directive.task
+            for directive in ce_output.directives
+        }
+
         for agent in self.agents:
             agent.config["instructions"] = self.llm_prompt
-            agents_tasks.append(agent.process_agent_directive())
-        
-        # Don't catch exceptions - let them propagate
-        all_agent_reports = await asyncio.gather(*agents_tasks)
 
-        # Process results from each agent
+        all_agent_reports = await asyncio.gather(*(agent.process_agent_directive() for agent in self.agents))
+
+        task_result = EvaluationTaskResult(query=query, task_id=ce_output.task_id)
+
         for agent, agent_reports in zip(self.agents, all_agent_reports):
             if not agent_reports:
-                logger.info(f"Agent {agent.print_name} returned no reports.")
-                task_result["agents"].append({
-                    "agent": agent.name,
-                    "status": "no_reports",
-                    "capabilities": []
-                })
+                logger.info("Agent %s returned no reports.", agent.print_name)
+                task_result.agents.append(
+                    EvaluationAgentResult(agent=agent.name, status="no_reports")
+                )
                 continue
 
-            agent_result = {
-                "agent": agent.name,
-                "capabilities": []
-            }
+            agent_result = EvaluationAgentResult(agent=agent.name)
+            logger.info("\nResults for %s:", agent.print_name)
 
-            logger.info(f"\nResults for {agent.print_name}:")
             for report in agent_reports:
-                results = json.loads(report.results)
-                
-                # Parse comprehensive validation dict
-                validation_dict = json.loads(report.validation) if report.validation else {}
-                
-                capability_result = {
-                    "capability": report.capability,
-                    "recommendation": results.get("recommendation", ""),
-                    "explanation": results.get("explanation", ""),
-                    "validation": validation_dict
-                }
-                
-                agent_result["capabilities"].append(capability_result)
-                
-                # Format for console output
-                ml_val = validation_dict.get("ml_validator")
-                validation_str = "N/A"
-                if ml_val:
-                    validation_str = f"{ml_val['status']} ({ml_val['passed']}/{ml_val['total']}, {ml_val['pass_rate']}%)"
-                
-                judge = validation_dict.get("llm_judge")
-                judge_str = "N/A"
-                if judge:
-                    judge_str = (
-                        f"Overall: {judge['overall_score']:.1f}/10 | "
-                        f"Strategic: {judge['strategic_alignment']}/10 | "
-                        f"Coherence: {judge['logical_coherence']}/10 | "
-                        f"Constraints: {judge['constraint_awareness']}/10 | "
-                        f"Clarity: {judge['clarity_actionability']}/10"
-                    )
-                
-                logger.info(
-                    f"{bold_str('Capability')}: {report.capability}\n"
-                    f"{bold_str('Recommendation')}: {results.get('recommendation', 'N/A')}\n"
-                    f"{bold_str('Explanation')}: {results.get('explanation', 'N/A')}\n"
-                    f"{bold_str('ML Validation')}: {validation_str}\n"
-                    f"{bold_str('LLM Judge')}: {judge_str}\n"
+                results = json.loads(report.results or "{}")
+                validation = json.loads(report.validation) if report.validation else {}
+                capability_name = _capability_name(report.capability)
+
+                capability_result = EvaluationCapabilityResult(
+                    capability=capability_name,
+                    agent_task=directive_task_lookup.get((agent.name, capability_name), ""),
+                    iterations=results.get("iterations", 0),
+                    ml_validation=results.get("ml_validation") or validation,
+                    recommendation=results.get("recommendation", ""),
+                    explanation=results.get("explanation", ""),
+                    next_steps=results.get("next_steps", []),
                 )
-            
-            task_result["agents"].append(agent_result)
-            logger.info("=" * 80)
-        
+                agent_result.capabilities.append(capability_result)
+
+                logger.info(
+                    "%s: %s\n%s: %s\n%s: %s\n%s: %s\n%s: %s\n",
+                    bold_str("Capability"),
+                    capability_result.capability,
+                    bold_str("Agent Task"),
+                    capability_result.agent_task or "N/A",
+                    bold_str("Iterations"),
+                    capability_result.iterations,
+                    bold_str("ML Validation"),
+                    capability_result.ml_validation.get("status", "N/A"),
+                    bold_str("Recommendation"),
+                    capability_result.recommendation or "N/A",
+                )
+
+            task_result.agents.append(agent_result)
+            logger.info("%s", "=" * 80)
+
         return task_result
 
-    async def run_evaluation(self, tasks=None, output_filename: str = "results.yaml"):
-        """Run evaluation on all tasks and save results."""
-        if tasks is None:
-            tasks = EVALUATION_TASKS
+    async def run_evaluation(
+        self,
+        tasks: list[str] | None = None,
+        output_filename: str = "results.yaml",
+    ) -> list[EvaluationTaskResult]:
+        tasks = tasks or EVALUATION_TASKS
 
-        # prepare output file (one shared file across runs) so we can append tasks incrementally
         output_dir = Path("evaluation/results")
         output_dir.mkdir(exist_ok=True)
         output_file = output_dir / output_filename
 
-        # Create the file only if it doesn't exist (do not reinitialize/overwrite)
-        if not output_file.exists():
-            initial_doc = {
-                "evaluation_run": {
-                    "created": datetime.now().isoformat(),
-                    "results": []
-                }
-            }
-            with open(output_file, "w") as f:
-                yaml.dump(initial_doc, f, default_flow_style=False, sort_keys=False)
-
-        all_results = {
-            "evaluation_run": {
-                "timestamp": datetime.now().isoformat(),
-                "total_tasks": len(tasks),
-                "results": []
-            }
-        }
-
-        for i, task in enumerate(tasks, 1):
-            logger.info(f"\n\n{'#'*80}\nTask {i}/{len(tasks)}\n{'#'*80}")
+        session_results: list[EvaluationTaskResult] = []
+        for index, task in enumerate(tasks, start=1):
+            logger.info("\n\n%s\nTask %s/%s\n%s", "#" * 80, index, len(tasks), "#" * 80)
             task_result = await self.evaluate_task(task)
-            all_results["evaluation_run"]["results"].append(task_result)
+            session_results.append(task_result)
 
-            # append by reading file, updating evaluation_run.results and writing back under FileLock
             lock = FileLock(f"{output_file}.lock")
             with lock:
-                with open(output_file, "r") as rf:
-                    data = yaml.safe_load(rf) or {}
+                existing = _load_results(output_file)
+                existing.append(task_result)
+                _write_results(output_file, existing)
 
-                # ensure expected structure and append
-                data.setdefault("evaluation_run", {}).setdefault("results", []).append(task_result)
+        logger.info("\n%s\nEvaluation complete! Results saved to: %s\n%s", "=" * 80, output_file, "=" * 80)
 
-                # write updated content back to file
-                with open(output_file, "w") as wf:
-                    yaml.dump(data, wf, default_flow_style=False, sort_keys=False)
-
-        logger.info(f"\n{'='*80}\nEvaluation complete! Results saved to: {output_file}\n{'='*80}")
-
-        return all_results
+        return session_results
 
 
-async def main(output_filename: str = "results.yaml"):
-    evaluator = MangoEvaluator()
-    results = await evaluator.run_evaluation(output_filename=output_filename)
-    
-    # Print summary
-    total_tasks = len(results["evaluation_run"]["results"])
-    successful_tasks = sum(1 for r in results["evaluation_run"]["results"] if "error" not in r)
-    
-    logger.info(f"\n{'='*80}")
-    logger.info(f"Evaluation Summary:")
-    logger.info(f"Total tasks: {total_tasks}")
-    logger.info(f"Successful: {successful_tasks}")
-    logger.info(f"Failed: {total_tasks - successful_tasks}")
-    logger.info(f"{'='*80}\n")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run evaluation and append results")
-    parser.add_argument(
-        "--out",
-        "-o",
-        default="results.yaml",
-        help="Output YAML filename inside evaluation/results/ to append to (default: results.yaml)"
-    )
-    args = parser.parse_args()
-    asyncio.run(main(output_filename=args.out))

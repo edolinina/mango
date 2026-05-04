@@ -1,3 +1,4 @@
+# ASGI entry point: mounts the CE or agent FastAPI sub-app based on SERVICE_MODE env var.
 from contextlib import asynccontextmanager
 import os
 from fastapi import FastAPI

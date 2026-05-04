@@ -1,14 +1,14 @@
 import os
 
 from fastmcp import FastMCP
-from mcp_server.protocol import MCPEnvelope, Directive, AgentOutput
+from agents.schemas import MCPEnvelope, Directive, AgentOutput
 
 mcp = FastMCP("MANGO-MCP")
 
-MCP_PORT = os.getenv("MCP_PORT", 8000)
+MCP_PORT = int(os.getenv("MCP_PORT", 8000))
 MESSAGES: list[MCPEnvelope] = [] # in-memory messages and directives store
 
-def _find_message_by_id(id: str) -> MCPEnvelope | None:
+def _find_message_by_id(id: str) -> dict | None:
     for msg in MESSAGES:
         if msg["message_id"] == id:
             return msg

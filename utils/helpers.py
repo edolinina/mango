@@ -10,7 +10,6 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 CONFIG_PATH = "config"
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-oss:20b")
-EVALUATION_MODE = os.getenv("EVALUATION_MODE", "false").lower() == "true"
 
 class color:
     BOLD = '\033[1m'
@@ -20,9 +19,6 @@ def bold_str(text: str):
     return f"{color.BOLD}{text}{color.END}"
 
 def load_config(config_file) -> dict:
-    """
-    Load YAML configuration file
-    """
     data = {}
     config_path = f"{CONFIG_PATH}/{config_file}"
     try:
@@ -36,6 +32,9 @@ def load_config(config_file) -> dict:
     except Exception as e:
         print(f"Unexpected error loading spec from '{config_path}'")
         raise
+
+def is_agent_enabled(agent_config: dict) -> bool:
+    return agent_config.get("enabled", True)
 
 def load_model(provider=LLM_PROVIDER, model=LLM_MODEL):
     temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
@@ -76,8 +75,17 @@ def get_mcp_client():
     )
 
 async def get_mcp_endpoint(mcp_client, endpoint):
-    tools = await mcp_client.get_tools()
-    return next((t for t in tools if t.name == endpoint), None)
+    try:
+        tools = await mcp_client.get_tools()
+        return next((t for t in tools if t.name == endpoint), None)
+    except httpx.ConnectError as e:
+        logger = logging.getLogger("mango")
+        logger.error(f"Failed to connect to MCP service: {e}. Check MCP_HOST and MCP_PORT configuration.")
+        return None
+    except Exception as e:
+        logger = logging.getLogger("mango")
+        logger.error(f"Error retrieving MCP endpoint '{endpoint}': {e}")
+        return None
 
 def setup_logger(name: str = "mango", level=logging.INFO):
     logger = logging.getLogger(name)
