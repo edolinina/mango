@@ -3,7 +3,7 @@ import logging
 import json
 import asyncio
 
-from agents.schemas import AgentOutput
+from schemas import AgentOutput
 from agents.worker_network import run_reflection_agent
 from utils.helpers import get_mcp_endpoint
 

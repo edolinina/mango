@@ -7,7 +7,7 @@ import pandas as pd
 import yaml
 from langchain.tools import tool
 
-from agents.schemas import MLValidationInput
+from schemas import MLValidationInput
 
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"

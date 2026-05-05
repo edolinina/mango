@@ -8,8 +8,6 @@ from fastapi.staticfiles import StaticFiles
 
 from pydantic import BaseModel
 
-from evaluation.evaluate import MangoEvaluator
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -148,25 +146,6 @@ def create_ce_app(ce):
         return {
             "status": "rejected",
         }
-
-    class EvaluationRequest(BaseModel):
-        tasks: list[str] | None = None
-        output_filename: str = "results.yaml"
-
-    def run_evaluation_bg(tasks, output_filename):
-        async def _run():
-            evaluator = MangoEvaluator()
-            results = await evaluator.run_evaluation(tasks=tasks, output_filename=output_filename)
-            total = len(results)
-            successful = sum(1 for r in results if any(a.capabilities for a in r.agents))
-            logger.info("Evaluation complete: %s/%s tasks successful", successful, total)
-        asyncio.run(_run())
-
-    @app.post("/evaluate")
-    async def evaluate(req: EvaluationRequest, background: BackgroundTasks):
-        logger.info("Starting evaluation run (output: %s)", req.output_filename)
-        background.add_task(run_evaluation_bg, req.tasks, req.output_filename)
-        return {"status": "running", "output_filename": req.output_filename}
 
 
     @app.get("/results")

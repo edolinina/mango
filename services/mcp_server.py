@@ -1,7 +1,7 @@
 import os
 
 from fastmcp import FastMCP
-from agents.schemas import MCPEnvelope, Directive, AgentOutput
+from schemas import MCPEnvelope, Directive, AgentOutput
 
 mcp = FastMCP("MANGO-MCP")
 

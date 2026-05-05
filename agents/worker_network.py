@@ -11,7 +11,7 @@ from langgraph.prebuilt import create_react_agent
 from agents.dataset_analysis_tool import run_dataset_analysis
 from agents.ml_validation_tool import run_ml_validation
 from agents.prompts import build_react_prompt, build_human_message
-from agents.schemas import AgentState, Recommendation
+from schemas import AgentState, Recommendation
 
 logger = logging.getLogger("mango")
 

@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from langchain.tools import tool
 
-from agents.schemas import DatasetAnalysisInput
+from schemas import DatasetAnalysisInput
 
 
 def _load_dataframe(data_path: str) -> pd.DataFrame:

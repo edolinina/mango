@@ -5,7 +5,7 @@ import httpx
 
 from pydantic import BaseModel, Field
 
-from agents.schemas import Directive, MCPEnvelope
+from schemas import Directive, MCPEnvelope
 from utils.helpers import get_mcp_endpoint
 
 logger = logging.getLogger("mango")
