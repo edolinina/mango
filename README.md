@@ -151,11 +151,13 @@ After opening the UI, enter a business task and click **Run**. The CE generates 
 
 Screenshots:
 
-<p align="left">
-  <img src="assets/hitl_approval.png" alt="Approval step" width="32%" />
-  <img src="assets/agents_runs.png" alt="Agents running" width="32%" />
-  <img src="assets/agent_results.png" alt="Agent results" width="32%" />
-</p>
+<table>
+  <tr>
+    <td><img src="assets/hitl_approval.png" alt="Approval step" width="300" height="180" /></td>
+    <td><img src="assets/agents_runs.png" alt="Agents running" width="300" height="180" /></td>
+    <td><img src="assets/agent_results.png" alt="Agent results" width="300" height="180" /></td>
+  </tr>
+</table>
 
 ## Evaluation (Optional)
 
