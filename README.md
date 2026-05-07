@@ -149,17 +149,13 @@ After opening the UI, enter a business task and click **Run**. The CE generates 
 3. Watch agent execution cards update in real time.
 4. Open each agent result card to inspect recommendation, explanation, next steps, and validation.
 
-Approval step (human-in-the-loop):
+Screenshots:
 
-![Approval step](assets/hitl_approval.png)
-
-Agents running:
-
-![Agents running](assets/agents_runs.png)
-
-Agent results view:
-
-![Agent results](assets/agent_results.png)
+<p align="left">
+  <img src="assets/hitl_approval.png" alt="Approval step" width="32%" />
+  <img src="assets/agents_runs.png" alt="Agents running" width="32%" />
+  <img src="assets/agent_results.png" alt="Agent results" width="32%" />
+</p>
 
 ## Evaluation (Optional)
 
