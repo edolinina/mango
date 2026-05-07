@@ -120,6 +120,7 @@ class WorkerAgent:
             result = AgentOutput(
                 agent=self.name,
                 capability=f"{cap['name']} {cap['avatar']}",
+                agent_task=directive.get("task", ""),
                 validation=json.dumps(validation or {}),
                 results=results,
                 task_id=directive.get("task_id", ""),

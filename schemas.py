@@ -63,6 +63,7 @@ class Directive(BaseModel):
 class AgentOutput(BaseModel):
     agent: str
     capability: str
+    agent_task: str = ""
     validation: str = ""
     results: str
     task_id: str = ""
@@ -85,26 +86,3 @@ class DatasetAnalysisInput(BaseModel):
         description="Feature columns to include in compact stats and correlations",
     )
     target_col: str = Field(default="", description="Prediction target column for correlations")
-
-
-class EvaluationCapabilityResult(BaseModel):
-    capability: str
-    agent_task: str = ""
-    iterations: int = 0
-    ml_validation: dict[str, Any] = Field(default_factory=dict)
-    recommendation: str = ""
-    explanation: str = ""
-    next_steps: list[str] = Field(default_factory=list)
-
-
-class EvaluationAgentResult(BaseModel):
-    agent: str
-    status: str = "completed"
-    capabilities: list[EvaluationCapabilityResult] = Field(default_factory=list)
-
-
-class EvaluationTaskResult(BaseModel):
-    query: str
-    task_id: str = ""
-    created: str = Field(default_factory=lambda: datetime.now().isoformat())
-    agents: list[EvaluationAgentResult] = Field(default_factory=list)

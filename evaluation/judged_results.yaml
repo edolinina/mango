@@ -1,0 +1,270 @@
+cases:
+- query: Increase net income by improving operating efficiency and protecting gross
+    profit.
+  task_id: 4f1fb80a-7376-4bd2-a0b4-4f01c17d4e13
+  score: 7
+  explanation: The recommendations from all three agents are well-aligned with the
+    query. BusinessAgent provides actionable strategies to improve operating efficiency,
+    HRAgent offers suggestions for workforce performance improvement that can contribute
+    to increased productivity, and CustomerServiceAgent proposes a targeted retention
+    strategy to protect gross profit through repeat business.
+  agents:
+  - agent: BusinessAgent
+    score: 8
+    explanation: The recommendation from BusinessAgent is specific, evidence-based,
+      and coherent. It provides actionable strategies to improve operating efficiency
+      and reduce unnecessary operational costs.
+  - agent: HRAgent
+    score: 7
+    explanation: The recommendation from HRAgent is partially useful but could be
+      more specific. It suggests prioritizing job satisfaction, work environment quality,
+      work-life balance, and employee growth and role stability, which can contribute
+      to increased productivity.
+  - agent: CustomerServiceAgent
+    score: 6
+    explanation: The recommendation from CustomerServiceAgent is partially useful
+      but has some limitations. The ML validation signal indicates that the agent
+      failed to meet the pass condition, and the recommendation may not be as effective
+      in protecting gross profit.
+- query: Reduce customer churn by improving retention drivers such as support, security,
+    and referrals.
+  task_id: a2f6c97f-b056-4629-9078-7516d4ed23a4
+  score: 9
+  explanation: All three agents provided high-quality recommendations that are well-aligned
+    with the query. The BusinessAgent's recommendation to optimize operating efficiency
+    is supported by strong evidence of a correlation between operating expenses and
+    net income. The HRAgent's recommendation to prioritize workforce performance improvement
+    opportunities is also well-supported, with strong positive correlations between
+    various job satisfaction metrics and performance rating. Finally, the CustomerServiceAgent's
+    recommendation to implement a loyalty program that rewards customers for long
+    tenure, frequent logins, and use of multiple product features is supported by
+    evidence suggesting that these behaviors are associated with lower churn rates.
+  agents:
+  - agent: BusinessAgent
+    score: 9
+    explanation: The BusinessAgent's recommendation to optimize operating efficiency
+      is well-supported by strong evidence of a correlation between operating expenses
+      and net income (0.418537). This suggests that reducing unnecessary operational
+      costs can lead to significant improvements in profitability.
+  - agent: HRAgent
+    score: 9
+    explanation: The HRAgent's recommendation to prioritize workforce performance
+      improvement opportunities is well-supported by strong positive correlations
+      between various job satisfaction metrics and performance rating. This suggests
+      that improving job satisfaction, enhancing work environment quality, maintaining
+      healthy work-life balance, and supporting employee growth and role stability
+      can lead to improved performance.
+  - agent: CustomerServiceAgent
+    score: 9
+    explanation: The CustomerServiceAgent's recommendation to implement a loyalty
+      program that rewards customers for long tenure, frequent logins, and use of
+      multiple product features is supported by evidence suggesting that these behaviors
+      are associated with lower churn rates. This suggests that implementing such
+      a program can improve customer satisfaction and retention.
+- query: Improve workforce performance through training, work-life balance, and manager
+    stability.
+  task_id: 355496d0-fbd1-4d70-8b2f-34f37a00586e
+  score: 7
+  explanation: The recommendations from HRAgent and BusinessAgent are well-aligned
+    with the query. CustomerServiceAgent's recommendation is partially relevant but
+    not directly addressing the query. The explanations provided by all agents are
+    supported by evidence. Next steps for each agent are practical and actionable.
+  agents:
+  - agent: HRAgent
+    score: 9
+    explanation: Strong correlation between employee satisfaction and performance
+      supports this recommendation.
+  - agent: BusinessAgent
+    score: 8
+    explanation: The strongest evidence supporting this recommendation comes from
+      the correlations between incomeBeforeTax and netIncome (0.899235), as well as
+      between operatingIncome and netIncome (0.668106).
+  - agent: CustomerServiceAgent
+    score: 5
+    explanation: Understanding the relationship between complaint count and churn
+      will help us identify high-risk customers and develop targeted retention strategies,
+      but this is not directly addressing workforce performance improvement.
+- query: Increase profitability while keeping customer churn low and employee performance
+    strong.
+  task_id: 2061d462-4683-45f8-a8cd-edf5bb5cc441
+  score: 6
+  explanation: The recommendations from BusinessAgent, HRAgent, and CustomerServiceAgent
+    are well-aligned with the query. The BusinessAgent's analysis of current business
+    strategies and identification of areas for improvement in profitability is supported
+    by evidence. The HRAgent's design of training programs to enhance employee performance
+    and productivity is also well-supported. However, the CustomerServiceAgent's recommendation
+    was not validated due to an error in the validation tool.
+  agents:
+  - agent: BusinessAgent
+    score: 8
+    explanation: The BusinessAgent's analysis of current business strategies and identification
+      of areas for improvement in profitability is supported by evidence. The correlation
+      between incomeBeforeTax and netIncome, as well as the gap between grossProfit
+      and operatingIncome, indicate operational inefficiencies that can be addressed
+      through cost reduction strategies.
+  - agent: HRAgent
+    score: 8
+    explanation: The HRAgent's design of training programs to enhance employee performance
+      and productivity is well-supported by evidence. The strongest evidence suggests
+      that employees with high job satisfaction, positive work environments, and healthy
+      work-life balance tend to have better performance ratings.
+  - agent: CustomerServiceAgent
+    score: 2
+    explanation: The CustomerServiceAgent's recommendation was not validated due to
+      an error in the validation tool. However, their analysis of customer usage patterns
+      and identification of areas for improvement in product engagement and feature
+      adoption is supported by evidence.
+- query: Improve customer loyalty without sacrificing business profitability.
+  task_id: b41c0a2c-a32a-434d-954b-eca952e174d6
+  score: 8
+  explanation: The recommendations from all three agents are well-aligned with the
+    query, and each agent provides a specific and useful recommendation. The BusinessAgent's
+    focus on operating income improvement is supported by evidence of its correlation
+    with lower churn rates. The HRAgent's suggestion to improve Environment Satisfaction
+    and Job Involvement is also evidence-based and relevant to workforce performance
+    improvement. However, the CustomerServiceAgent's recommendation has some issues
+    with ML validation (50% pass rate), but it still provides actionable next steps.
+  agents:
+  - agent: BusinessAgent
+    score: 9
+    explanation: The BusinessAgent's recommendation is highly aligned with the query
+      and is supported by evidence of its correlation with lower churn rates.
+  - agent: HRAgent
+    score: 8
+    explanation: The HRAgent's suggestion to improve Environment Satisfaction and
+      Job Involvement is evidence-based and relevant to workforce performance improvement.
+  - agent: CustomerServiceAgent
+    score: 6
+    explanation: While the CustomerServiceAgent's recommendation has some issues with
+      ML validation, it still provides actionable next steps, but its relevance and
+      usefulness are somewhat compromised by the failed validation signal.
+- query: Raise employee performance while minimizing customer churn risk.
+  task_id: c859ab7e-2938-4597-988f-5152ee0dc43a
+  score: 8
+  explanation: The recommendations from all three agents are aligned with the query,
+    but there is room for improvement in terms of specificity and next steps. The
+    HRAgent's recommendation is well-supported by evidence, but the BusinessAgent's
+    recommendation could be more specific. The CustomerServiceAgent's recommendation
+    is strong, but the ML validation signal indicates that it did not fully meet its
+    pass condition.
+  agents:
+  - agent: HRAgent
+    score: 9
+    explanation: The HRAgent's recommendation to prioritize strategies that improve
+      employee satisfaction and engagement is well-supported by evidence. The next
+      steps are specific and actionable.
+  - agent: BusinessAgent
+    score: 7
+    explanation: The BusinessAgent's recommendation to optimize operating efficiency
+      and reduce unnecessary operational costs is aligned with the query, but it could
+      be more specific. The explanation is based on income statement data, which is
+      relevant.
+  - agent: CustomerServiceAgent
+    score: 8
+    explanation: The CustomerServiceAgent's recommendation to implement a referral
+      program and offer personalized product recommendations is strong, but the ML
+      validation signal indicates that it did not fully meet its pass condition. The
+      explanation is well-supported by evidence.
+- query: Improve profitability while keeping both customer loyalty and workforce performance
+    stable.
+  task_id: 84252964-e578-452f-b9d0-4128b78dd68d
+  score: 8
+  explanation: The recommendations from HRAgent, BusinessAgent, and CustomerServiceAgent
+    are well-aligned with the query. Each agent provides a specific and actionable
+    plan to improve their respective areas (workforce performance, profitability,
+    and customer loyalty). The explanations provided by each agent are supported by
+    evidence and highlight key correlations between variables.
+  agents:
+  - agent: HRAgent
+    score: 9
+    explanation: The recommendation from HRAgent is excellent. It provides a clear
+      plan to improve workforce performance, which is well-supported by the evidence
+      of strong correlation between employee satisfaction and performance.
+  - agent: BusinessAgent
+    score: 8
+    explanation: The recommendation from BusinessAgent is good. It identifies areas
+      for improvement in profitability metrics and provides a clear plan to optimize
+      operating efficiency, but could be more specific about the actions needed to
+      reduce unnecessary operational costs.
+  - agent: CustomerServiceAgent
+    score: 7
+    explanation: The recommendation from CustomerServiceAgent is partially useful.
+      It identifies areas for improvement in customer loyalty and provides a clear
+      plan to implement a proactive engagement strategy, but the ML validation signal
+      indicates that this agent's task failed to meet its pass condition.
+- query: Increase net income without weakening customer retention or employee performance.
+  task_id: 1a913723-b6a9-4c17-b499-951c91d54e9d
+  score: 8
+  explanation: Both HRAgent and BusinessAgent provided strong evidence-based recommendations
+    that align with the query. CustomerServiceAgent's recommendation is also relevant
+    but less specific compared to the other two agents. The next steps for each agent
+    are practical and actionable, and the ML validation signals indicate high success
+    rates.
+  agents:
+  - agent: HRAgent
+    score: 9
+    explanation: Provided a well-reasoned recommendation that prioritizes strategies
+      to improve job satisfaction, work environment quality, and employee growth.
+      The evidence is strong, and the next steps are specific and actionable.
+  - agent: BusinessAgent
+    score: 9
+    explanation: Offered a clear and evidence-based recommendation to optimize operating
+      efficiency by reducing unnecessary operational costs and improving gross profit
+      margins. The next steps are practical and aligned with the query.
+  - agent: CustomerServiceAgent
+    score: 7
+    explanation: Provided a relevant but less specific recommendation that prioritizes
+      strategies to reduce complaints and support issues. While the evidence is strong,
+      the next steps could be more detailed and actionable.
+- query: Strengthen customer loyalty for high-tenure customers while maintaining healthy
+    margins.
+  task_id: 15062616-6cfe-4ebd-b5f1-51b9062bd133
+  score: 8
+  explanation: The recommendations from all three agents are well-aligned with the
+    query and provide actionable next steps. The BusinessAgent's recommendation to
+    improve operating efficiency is supported by a strong correlation between incomeBeforeTax
+    and netIncome, which suggests opportunities for cost reduction. The HRAgent's
+    recommendation to prioritize workforce performance improvement is also evidence-based,
+    highlighting the importance of employee satisfaction in driving better performance
+    ratings. However, the CustomerServiceAgent's recommendation was partially successful
+    due to its high failure rate (50% pass rate), but it still provides valuable insights
+    into customer behavior and retention strategies.
+  agents:
+  - agent: BusinessAgent
+    score: 8
+    explanation: The BusinessAgent's recommendation is well-supported by the evidence,
+      highlighting opportunities for cost reduction through improved operating efficiency.
+  - agent: HRAgent
+    score: 9
+    explanation: The HRAgent's recommendation is strongly supported by the evidence,
+      emphasizing the importance of workforce performance improvement in driving better
+      outcomes.
+  - agent: CustomerServiceAgent
+    score: 6
+    explanation: While the CustomerServiceAgent's recommendation was partially successful,
+      its high failure rate (50% pass rate) reduces its overall score. However, it
+      still provides valuable insights into customer behavior and retention strategies.
+- query: Achieve balanced improvement in profitability, customer loyalty, and workforce
+    performance.
+  task_id: 1dd89990-fc47-45d8-86fc-edcb6b57bb64
+  score: 7
+  explanation: The recommendations from HRAgent and BusinessAgent are well-aligned
+    with the query. However, CustomerServiceAgent's recommendation is not as specific
+    or actionable as the others. The ML validation signal for HRAgent and BusinessAgent
+    is strong, but CustomerServiceAgent failed to meet its pass condition.
+  agents:
+  - agent: HRAgent
+    score: 9
+    explanation: The recommendation from HRAgent is highly specific and actionable.
+      The explanation is well-supported by evidence, and the next steps are clear.
+  - agent: BusinessAgent
+    score: 9
+    explanation: Similar to HRAgent, BusinessAgent's recommendation is also highly
+      specific and actionable. The explanation is well-supported by evidence, and
+      the next steps are clear.
+  - agent: CustomerServiceAgent
+    score: 4
+    explanation: While CustomerServiceAgent's recommendation is somewhat relevant
+      to customer loyalty improvement, it is not as specific or actionable as the
+      recommendations from HRAgent and BusinessAgent. The ML validation signal indicates
+      that the agent failed to meet its pass condition.

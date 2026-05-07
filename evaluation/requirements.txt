@@ -1,0 +1,10 @@
+httpx
+pydantic
+pyyaml
+python-dotenv
+langchain-core
+langchain-ollama
+langchain-openai
+matplotlib
+pandas
+seaborn

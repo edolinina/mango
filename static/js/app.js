@@ -8,6 +8,13 @@ function cleanName(name) {
     .split(" ")[0];
 }
 
+function agentKey(name) {
+  return (name || "")
+    .replace(/[\u{1F300}-\u{1FAFF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+    .trim()
+    .split(" ")[0];
+}
+
 function extractEmoji(str) {
   const parts = str.trim().split(" ");
   const last = parts[parts.length - 1];
@@ -159,7 +166,7 @@ function App() {
   const pollerRef = useRef(null);
   const expectedLabelsRef = useRef([]);
 
-  const expectedLabels = expectedAgents.map((name) => cleanName(name));
+  const expectedLabels = expectedAgents.map((name) => agentKey(name));
   const allFinished = expectedLabels.length > 0 && expectedLabels.every((label) => finishedAgents.has(label));
 
   useEffect(() => {
@@ -236,7 +243,7 @@ function App() {
     if (data.agents) {
       const nextAgents = data.agents.slice();
       setExpectedAgents(nextAgents);
-      expectedLabelsRef.current = nextAgents.map((name) => cleanName(name));
+      expectedLabelsRef.current = nextAgents.map((name) => agentKey(name));
     }
     setStatusMsg("Agents are working…");
     if (pollerRef.current) clearInterval(pollerRef.current);
@@ -273,17 +280,17 @@ function App() {
 
     // Only count agents that are part of this run.
     const expectedSet = new Set(expectedLabelsRef.current);
-    const relevantAgents = agents.filter((a) => expectedSet.has(cleanName(a.agent)));
+    const relevantAgents = agents.filter((a) => expectedSet.has(agentKey(a.agent)));
 
     if (relevantAgents.length === 0) return;
 
     const newMap = {};
-    relevantAgents.forEach(agentObj => { newMap[cleanName(agentObj.agent)] = agentObj; });
+    relevantAgents.forEach(agentObj => { newMap[agentKey(agentObj.agent)] = agentObj; });
 
     setAgentResultsMap(prev => ({ ...prev, ...newMap }));
     setFinishedAgents(prev => {
       const next = new Set(prev);
-      relevantAgents.forEach(a => next.add(cleanName(a.agent)));
+      relevantAgents.forEach(a => next.add(agentKey(a.agent)));
       return next;
     });
   }
@@ -397,13 +404,14 @@ function App() {
                   <div className="section-title">Agents</div>
                   <div className="agents-grid">
                     {expectedAgents.map(name => {
+                      const key = agentKey(name);
                       const label = cleanName(name);
                       return (
                         <AgentCard
                           key={name}
                           name={name}
-                          spinning={!finishedAgents.has(label)}
-                          onClick={() => setSelectedAgent(label)}
+                          spinning={!finishedAgents.has(key)}
+                          onClick={() => setSelectedAgent(key)}
                         />
                       );
                     })}
