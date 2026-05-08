@@ -1,9 +1,6 @@
 import os
 
 import pandas as pd
-from langchain.tools import tool
-
-from schemas import DatasetAnalysisInput
 
 
 def _load_dataframe(data_path: str) -> pd.DataFrame:
@@ -125,7 +122,6 @@ def _build_structured_summary(df: pd.DataFrame, feature_cols: list[str], target_
     }
 
 
-@tool("run_dataset_analysis", args_schema=DatasetAnalysisInput)
 def run_dataset_analysis(
     data_path: str,
     feature_cols: list[str] | None = None,

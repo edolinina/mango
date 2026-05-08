@@ -2,6 +2,7 @@ import os
 
 from fastmcp import FastMCP
 from schemas import MCPEnvelope, Directive, AgentOutput
+from agents.dataset_analysis_tool import run_dataset_analysis
 
 mcp = FastMCP("MANGO-MCP")
 
@@ -43,6 +44,9 @@ def send_feedback(envelope: dict) -> str:
 def list_messages() -> list:
     """Return a copy of stored MCP envelopes."""
     return list(MESSAGES)
+
+
+mcp.tool()(run_dataset_analysis)
 
 
 if __name__ == "__main__":

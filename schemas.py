@@ -69,20 +69,3 @@ class AgentOutput(BaseModel):
     task_id: str = ""
 
 
-class MLValidationInput(BaseModel):
-    agent_name: str = Field(description="Agent name as configured in agents.yaml")
-    capability_name: str = Field(description="Capability name to resolve the validator")
-    data_path: str = Field(description="Dataset path for validation")
-    validation_samples: list[dict] = Field(
-        default_factory=list,
-        description="Optional explicit samples to validate instead of loading the dataset",
-    )
-
-
-class DatasetAnalysisInput(BaseModel):
-    data_path: str = Field(description="Dataset path")
-    feature_cols: list[str] = Field(
-        default_factory=list,
-        description="Feature columns to include in compact stats and correlations",
-    )
-    target_col: str = Field(default="", description="Prediction target column for correlations")

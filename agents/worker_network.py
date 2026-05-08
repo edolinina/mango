@@ -1,17 +1,16 @@
 import asyncio
 import json
 import logging
-import os
 
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import create_react_agent
 
-from agents.dataset_analysis_tool import run_dataset_analysis
 from agents.ml_validation_tool import run_ml_validation
 from agents.prompts import build_react_prompt, build_human_message
 from schemas import AgentState, Recommendation
+from utils.helpers import get_mcp_client, get_mcp_endpoint
 
 logger = logging.getLogger("mango")
 
@@ -22,14 +21,18 @@ class ReactAgentEngine:
     _RECURSION_LIMIT = MAX_ITERATIONS * 2 + 1
 
     async def analyze_node(self, state: AgentState) -> dict:
-        data_path = state.get("data_path", "")
         try:
-            analysis = run_dataset_analysis.invoke({
-                "data_path": data_path,
-                "feature_cols": state.get("validator_features", []),
-                "target_col": state.get("validator_target", ""),
-            })
-            analysis_context = json.dumps(analysis, ensure_ascii=True)
+            mcp_client = get_mcp_client()
+            mcp_tool = await get_mcp_endpoint(mcp_client, "run_dataset_analysis")
+            if mcp_tool:
+                analysis = await mcp_tool.ainvoke({
+                    "data_path": state.get("data_path", ""),
+                    "feature_cols": state.get("validator_features", []),
+                    "target_col": state.get("validator_target", ""),
+                })
+                analysis_context = json.dumps(analysis, ensure_ascii=True)
+            else:
+                analysis_context = "Analysis tool unavailable on MCP"
         except Exception as exc:
             logger.warning(f"dataset analysis failed: {exc}")
             analysis_context = f"Analysis unavailable: {exc}"
@@ -41,7 +44,6 @@ class ReactAgentEngine:
         }
 
     async def react_node(self, state: AgentState) -> dict:
-        data_path = state.get("data_path", "")
         model = state["model"]
         agent_name = state.get("agent_name", "")
         cap_name = state.get("cap", {}).get("name", "")
@@ -49,12 +51,11 @@ class ReactAgentEngine:
         @tool("validate_recommendation")
         def validate_recommendation(validation_samples: list[dict]) -> dict:
             """Validate recommendation samples with the trained ML validator."""
-            return run_ml_validation.invoke({
-                "agent_name": agent_name,
-                "capability_name": cap_name,
-                "data_path": data_path,
-                "validation_samples": validation_samples,
-            })
+            return run_ml_validation(
+                agent_name=agent_name,
+                capability_name=cap_name,
+                validation_samples=validation_samples,
+            )
 
         prompt = build_react_prompt(state, state.get("analysis_context", ""))
         react_agent = create_react_agent(
@@ -76,29 +77,21 @@ class ReactAgentEngine:
             config={"recursion_limit": self._RECURSION_LIMIT},
         )
 
-        messages = result.get("messages", [])
-        validation_messages = [msg for msg in messages if isinstance(msg, ToolMessage)]
-
-        ml_validation = {}
-        if validation_messages:
-            try:
-                content = validation_messages[-1].content
-                ml_validation = json.loads(content) if isinstance(content, str) else content
-            except Exception:
-                logger.warning("failed to parse validation tool output")
-
-        if not ml_validation:
-            ml_validation = {
-                "status": "error",
-                "error": "Validation tool did not return output",
-            }
-
-        structured: Recommendation = result.get("structured_response")
-        if structured:
-            payload = structured.model_dump(exclude={"validation_samples"})
+        recommendation: Recommendation = result.get("structured_response")
+        if recommendation:
+            payload = recommendation.model_dump(exclude={"validation_samples"})
         else:
             logger.warning("structured_response missing from agent result")
             payload = {"recommendation": "", "explanation": "", "next_steps": []}
+
+        tool_messages = [msg for msg in result.get("messages", []) if isinstance(msg, ToolMessage)]
+        ml_validation: dict = {"status": "error", "error": "Validation not executed"}
+        if tool_messages:
+            try:
+                content = tool_messages[-1].content
+                ml_validation = json.loads(content) if isinstance(content, str) else content
+            except Exception:
+                logger.warning("failed to parse validation tool output")
 
         attempt = state.get("iteration", 0) + 1
         feedback = (
@@ -165,11 +158,10 @@ class ReactAgentEngine:
             "_id": directive_state.get("_id"),
         }
 
-        data_path = directive_state.get("data_path", "")
-        if not data_path or not os.path.exists(data_path):
-            logger.error(f"Invalid data_path '{data_path}' — skipping directive")
+        if not directive_state.get("data_path"):
+            logger.error("No data_path in directive state — skipping directive")
             output["results"] = {}
-            output["validation"] = {"status": "error", "issues": [f"Dataset not found: {data_path}"]}
+            output["validation"] = {"status": "error", "issues": ["data_path not specified in directive"]}
             return output
 
         graph = self._build_graph()

@@ -42,8 +42,6 @@ services:
       SERVICE_PORT: ${CE_PORT}
     ports:
       - "${CE_PORT}:${CE_PORT}"
-    volumes:
-      - ./models:${TRAINED_MODELS_PATH}
     deploy:
       resources:
         limits:

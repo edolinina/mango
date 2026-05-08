@@ -11,6 +11,7 @@ A Central Executive (CE) receives a high-level objective, creates directives for
 - Agentic orchestration across multiple specialized agents.
 - Central Executive task decomposition and directive routing.
 - ReAct reasoning with explicit tool calls.
+- MCP-hosted dataset analysis; agent-local ML validation.
 - Structured MCP message passing for directives and feedback.
 - Autonomous and approval-based execution modes.
 - Optional offline evaluation utilities for batch runs and judge scoring.
@@ -22,7 +23,7 @@ A Central Executive (CE) receives a high-level objective, creates directives for
 - FastAPI services.
 - CE orchestration logic in `agents/central_executive.py`.
 - Agent reasoning engine in `agents/worker_network.py`.
-- MCP transport in `services/mcp_server.py`.
+- MCP server in `services/mcp_server.py` for agent communication and shared dataset analysis tool.
 - CE APIs in `services/ce_api.py`.
 - Agent trigger API in `services/agent_api.py`.
 
@@ -40,11 +41,11 @@ A Central Executive (CE) receives a high-level objective, creates directives for
 
 Each agent processes a directive through a LangGraph state machine:
 
-1. `analyze`: runs dataset analysis context preparation.
-2. `react`: runs a ReAct agent with explicit tools.
+1. `analyze`: calls the MCP-hosted `run_dataset_analysis` tool to prepare context. Dataset analysis is stateless — it takes a path and returns statistics with no agent-specific dependencies — so it runs as a shared MCP tool.
+2. `react`: runs a ReAct agent with `validate_recommendation` — a local tool that calls the agent's own trained ML validator directly. ML validation runs locally because each agent has its own trained `.pkl` model files.
 3. `finalize`: returns structured recommendation payload.
 
-The ReAct step uses explicit tools, including ML validation (`validate_recommendation`), and can iterate up to a capped number of attempts before finalizing.
+The ReAct step iterates up to a capped number of attempts before finalizing.
 
 Final result payload includes:
 

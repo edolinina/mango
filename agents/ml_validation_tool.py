@@ -5,9 +5,6 @@ import os
 import joblib
 import pandas as pd
 import yaml
-from langchain.tools import tool
-
-from schemas import MLValidationInput
 
 CONFIG_PATH = "config/agents.yaml"
 MODELS_DIR = "models"
@@ -110,11 +107,9 @@ def _parse_pass_condition(pass_condition: str, preds: list[float]) -> tuple:
     return OPS[op_symbol], rhs_value, op_symbol
 
 
-@tool("run_ml_validation", args_schema=MLValidationInput)
 def run_ml_validation(
     agent_name: str,
     capability_name: str,
-    data_path: str,
     validation_samples: list[dict] | None = None,
 ) -> dict:
     """Run trained ML validator and return pass metrics."""
