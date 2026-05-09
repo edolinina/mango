@@ -1,23 +1,16 @@
 import os
+import logging
 
 import pandas as pd
+from fastmcp import Context
+
+logger = logging.getLogger("mango")
 
 
 def _load_dataframe(data_path: str) -> pd.DataFrame:
-    if not data_path:
-        raise ValueError("No dataset path provided")
-    if not os.path.exists(data_path):
-        raise FileNotFoundError(f"Dataset not found: {data_path}")
     if data_path.lower().endswith((".xlsx", ".xls")):
         return pd.read_excel(data_path)
     return pd.read_csv(data_path, low_memory=False)
-
-
-def _to_numeric_for_corr(series: pd.Series) -> pd.Series:
-    if pd.api.types.is_numeric_dtype(series):
-        return pd.to_numeric(series, errors="coerce")
-    codes, _ = pd.factorize(series.astype(str), sort=True)
-    return pd.Series(codes, index=series.index, dtype="float64")
 
 
 def _build_structured_summary(df: pd.DataFrame, feature_cols: list[str], target_col: str) -> dict:
@@ -86,15 +79,18 @@ def _build_structured_summary(df: pd.DataFrame, feature_cols: list[str], target_
             }
 
     correlations: list[dict] = []
-    if target_col and target_col in df.columns and feature_cols:
-        target_num = _to_numeric_for_corr(df[target_col])
+    if target_col and target_col in df.columns and feature_cols and pd.api.types.is_numeric_dtype(df[target_col]):
+        target_num = pd.to_numeric(df[target_col], errors="coerce")
         corr_rows: list[tuple[str, float]] = []
 
         for col in feature_cols:
             if col not in df.columns or col == target_col:
                 continue
 
-            x = _to_numeric_for_corr(df[col])
+            if not pd.api.types.is_numeric_dtype(df[col]):
+                continue
+
+            x = pd.to_numeric(df[col], errors="coerce")
             valid = x.notna() & target_num.notna()
             if valid.sum() < 3:
                 continue
@@ -109,7 +105,7 @@ def _build_structured_summary(df: pd.DataFrame, feature_cols: list[str], target_
                 "feature": col,
                 "corr": round(corr, 6),
                 "abs_corr": round(abs(corr), 6),
-                "method": "pearson_numeric_or_factorized",
+                "method": "pearson_numeric",
             }
             for col, corr in corr_rows[:8]
         ]
@@ -122,16 +118,44 @@ def _build_structured_summary(df: pd.DataFrame, feature_cols: list[str], target_
     }
 
 
-def run_dataset_analysis(
-    data_path: str,
+async def run_dataset_analysis(
+    ctx: Context,
+    data_path: str = "",
     feature_cols: list[str] | None = None,
     target_col: str = "",
+    agent_name: str = "",
 ) -> dict:
     """Analyze a dataset and return structured summary stats and feature-target correlations."""
-    df = _load_dataframe(data_path)
-    selected_features = list(feature_cols or [])
+    await ctx.info(f"run_dataset_analysis started for agent='{agent_name or 'unknown'}'")
 
-    if not selected_features:
-        selected_features = [c for c in df.columns if c != target_col][:8]
+    try:
+        resolved_path = data_path.strip()
+        if not resolved_path:
+            raise ValueError("No dataset path provided")
+        if not os.path.exists(resolved_path):
+            raise FileNotFoundError(f"Dataset not found: {resolved_path}")
 
-    return _build_structured_summary(df, selected_features, target_col)
+        df = _load_dataframe(resolved_path)
+        selected_features = list(feature_cols or [])
+
+        if not selected_features:
+            selected_features = [c for c in df.columns if c != target_col][:8]
+
+        result = _build_structured_summary(df, selected_features, target_col)
+
+        rows = result.get("dataset_overview", {}).get("rows", 0)
+        cols = result.get("dataset_overview", {}).get("columns", 0)
+        logger.info(
+            "run_dataset_analysis | agent=%s | path=%s | rows=%s | cols=%s",
+            agent_name or "unknown",
+            resolved_path,
+            rows,
+            cols,
+        )
+        await ctx.info(f"run_dataset_analysis completed: rows={rows}, cols={cols}")
+
+        return result
+    except Exception as exc:
+        logger.exception("run_dataset_analysis failed | agent=%s | path=%s", agent_name or "unknown", data_path)
+        await ctx.error(f"run_dataset_analysis failed: {exc}")
+        raise

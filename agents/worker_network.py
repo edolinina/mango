@@ -25,10 +25,12 @@ class ReactAgentEngine:
             mcp_client = get_mcp_client()
             mcp_tool = await get_mcp_endpoint(mcp_client, "run_dataset_analysis")
             if mcp_tool:
+                agent_name = state.get("agent_name", "")
                 analysis = await mcp_tool.ainvoke({
                     "data_path": state.get("data_path", ""),
                     "feature_cols": state.get("validator_features", []),
                     "target_col": state.get("validator_target", ""),
+                    "agent_name": agent_name,
                 })
                 analysis_context = json.dumps(analysis, ensure_ascii=True)
             else:
@@ -157,12 +159,6 @@ class ReactAgentEngine:
             "directive": directive_state.get("directive"),
             "_id": directive_state.get("_id"),
         }
-
-        if not directive_state.get("data_path"):
-            logger.error("No data_path in directive state — skipping directive")
-            output["results"] = {}
-            output["validation"] = {"status": "error", "issues": ["data_path not specified in directive"]}
-            return output
 
         graph = self._build_graph()
         final_state = await graph.ainvoke(directive_state)

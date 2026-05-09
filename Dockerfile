@@ -17,6 +17,7 @@ ENV PYTHONPATH=/app
 
 # ---------- AGENT ----------
 FROM mango-base AS mango-agent
+RUN rm -rf /app/data_sources
 CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${SERVICE_PORT}"]
 
 # ---------- MCP ----------

@@ -31,6 +31,7 @@ services:
     <<: *common-env
     volumes:
       - ./models:${TRAINED_MODELS_PATH}
+      - ./data_sources:/app/data_sources:ro
 
   ce:
     image: mango-agent

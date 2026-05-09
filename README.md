@@ -41,7 +41,7 @@ A Central Executive (CE) receives a high-level objective, creates directives for
 
 Each agent processes a directive through a LangGraph state machine:
 
-1. `analyze`: calls the MCP-hosted `run_dataset_analysis` tool to prepare context. Dataset analysis is stateless — it takes a path and returns statistics with no agent-specific dependencies — so it runs as a shared MCP tool.
+1. `analyze`: calls MCP-hosted `run_dataset_analysis` with the agent's configured dataset path.
 2. `react`: runs a ReAct agent with `validate_recommendation` — a local tool that calls the agent's own trained ML validator directly. ML validation runs locally because each agent has its own trained `.pkl` model files.
 3. `finalize`: returns structured recommendation payload.
 
