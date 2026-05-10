@@ -36,3 +36,6 @@ torchvision
 # Visualization
 matplotlib
 seaborn
+
+# Testing
+pytest
